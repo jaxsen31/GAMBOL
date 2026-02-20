@@ -33,10 +33,10 @@ banluck-solver/
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| 1 | Game engine + unit tests | 🔄 In progress |
-| 2 | Baseline DP solver (fixed dealer) | ⏭️ Upcoming |
-| 3 | CFR+ full Nash equilibrium | ⏭️ Upcoming |
-| 4 | Analysis, variance, strategy charts | ⏭️ Upcoming |
+| 1 | Game engine + unit tests (245/245 passing) | ✅ Complete |
+| 1.1 | Baseline DP solver (fixed dealer) | 🔄 Active |
+| 2 | CFR+ full Nash equilibrium | ⏭️ Upcoming |
+| 3 | Analysis, variance, strategy charts | ⏭️ Upcoming |
 
 ## Setup
 ```bash
