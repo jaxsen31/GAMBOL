@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Context
 
-Always prioritize the constraints defined in `banluck_PRD_v1.2.md` (the active PRD). Any implementation decision that conflicts with the PRD must be flagged and resolved before proceeding.
+Always prioritize the constraints defined in `banluck_PRD_v1.3.md` (the active PRD). Any implementation decision that conflicts with the PRD must be flagged and resolved before proceeding.
 
 ## Session Start
 
@@ -14,7 +14,8 @@ At the start of every session: read the last entry in `NEXT_ACTIONS.md`, summari
 
 The active PRD is always at the repo root. Superseded versions live in `archive/`:
 - `archive/banluck_PRD_v1.1.md` — archived
-- `banluck_PRD_v1.2.md` — **active**
+- `archive/banluck_PRD_v1.2.md` — archived
+- `banluck_PRD_v1.3.md` — **active**
 
 When a new PRD version is provided, move the current active version to `archive/` before placing the new one at the root.
 
@@ -47,11 +48,11 @@ The project is a GTO solver for Banluck (Chinese Blackjack). Code lives in `banl
 - **`hand.py`** — `calculate_total(cards)` with ace resolution. Ace logic: 2-card hand → 10 or 11; 3+-card hand → 1 or 10 (greedy, maximise without busting).
 - **`special_hands.py`** — `classify_hand(cards)` returns one of: `'ban_ban'`, `'ban_luck'`, `'777'`, `'five_card_21'`, `'five_card_sub21'`, `'regular'`, `'bust'`. Hierarchy rank: 1 (strongest) to 7 (weakest).
 - **`rules.py`** — `settle_hand(player_cards, dealer_cards, dealer_surrendered, dealer_busted)` → `(Outcome, payout_units)`. Payout is signed floats from player's perspective. Settlement priority: dealer surrender → player bust → player ≤15 forfeit → hand comparison.
-- **`game_state.py`** — `play_hand(deck, ...)` orchestrates the full hand flow. `settle_with_selective_reveal(...)` implements the heads-up selective reveal mechanic. Strategies are passed as callables.
+- **`game_state.py`** — `play_hand(deck, ...)` orchestrates the full hand flow. `settle_with_selective_reveal(...)` implements the selective reveal mechanic. Strategies are passed as callables. Whether to use selective reveal is controlled by the caller — the engine supports both reveal and no-reveal modes.
 
 ### Solver layer (`src/solvers/`) — currently empty, Phase 1.1 target
 
-Planned: `baseline_dp.py` (backward induction, fixed dealer) and `ev_tables.py`.
+Planned: `baseline_dp.py` (backward induction, fixed dealer, two runs: reveal_mode=ON vs OFF) and `ev_tables.py`.
 
 ### Analysis layer (`src/analysis/`) — currently empty
 
@@ -64,7 +65,7 @@ These differ from standard Blackjack and are fully implemented in the engine:
 1. **Ace valuation**: 2-card hand → ace = 10 or 11; 3+-card hand → ace = 1 or 10
 2. **Dealer hard-15 surrender** → push, overrides ALL outcomes including Ban Ban
 3. **Player ≤15 forfeit** → unconditional loss, even on dealer bust
-4. **Selective reveal at dealer 16/17**: 3+-card players are settled against the dealer's *current* (pre-hit) total; 2-card players are settled against the dealer's *final* total
+4. **Selective reveal at dealer 16/17**: the dealer **may optionally** reveal 3+-card players before hitting — this is a strategic choice, not a hard rule. When used: 3+-card players settle against the dealer's *current* (pre-hit) total; 2-card players settle against the dealer's *final* total. The solver explores both reveal_mode=ON and reveal_mode=OFF to quantify EV impact; Phase 2 (CFR) models REVEAL_PLAYER as an explicit dealer action node.
 5. **Five-card vs five-card**: winner determined by total at 1:1 (not the bonus multiplier)
 6. **Ban Ban / Ban Luck**: immediately settled after initial deal, never played further
 
@@ -91,5 +92,6 @@ These differ from standard Blackjack and are fully implemented in the engine:
 See `NEXT_ACTIONS.md` for the full task list. Key design decisions already made:
 - State: `(player_cards: tuple, dealer_upcard: int, deck: tuple)`
 - Dealer strategy: fixed (hit ≤16, hit soft 17, stand hard 17+)
-- Output: `optimal_action[player_total][hand_size][dealer_upcard]`
+- Two runs: `reveal_mode=ON` (dealer always reveals 3+-card players at 16/17) and `reveal_mode=OFF` (all players settle against final total)
+- Output: two strategy charts + EV comparison, keyed on `(player_total, hand_size, dealer_upcard)`
 - Validation: Monte Carlo cross-check within ±0.1% EV

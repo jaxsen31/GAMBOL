@@ -10,7 +10,7 @@ A game-theoretically optimal strategy solver for Banluck (Chinese Blackjack), bu
 Banluck is a Chinese Blackjack variant played commonly during CNY. It differs from standard Blackjack in several key ways:
 - Special hands with multiplied payouts (Ban Ban 3:1, Ban Luck 2:1, 777 7:1, Five-card hands)
 - Dealer can surrender on hard 15, voiding all bets including special hands
-- Dealer uses a selective reveal strategy — opening weak players before deciding to draw
+- Dealer may use selective reveal at 16/17 — opening weak players before deciding to draw. The solver quantifies whether this is optimal.
 - Ace valuation changes depending on hand size (2-card vs 3+ card hands)
 
 ## Project Goal
@@ -65,7 +65,7 @@ pytest tests/ -v
 
 1. How valuable is the dealer's selective reveal in % edge?
 2. Does optimal play differ meaningfully from standard Blackjack basic strategy?
-3. What is the GTO dealer reveal threshold at hard 16/17?
+3. What is the GTO dealer reveal strategy at hard 16/17 — always reveal, never reveal, or a mixed strategy?
 4. How often does hard 15 surrender save the dealer from a losing hand?
 
 ## License
