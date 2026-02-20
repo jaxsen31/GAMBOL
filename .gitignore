@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+wheels/
+*.spec
+
+# Virtual environments
+venv/
+env/
+.env
+.venv
+ENV/
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# Pytest and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Solver outputs (large files, regenerable)
+*.pkl
+*.npy
+*.npz
+outputs/
+results/
+strategy_tables/*.csv
+strategy_tables/*.json
+
+# Numba cache
+__numba_cache__/
+numba_cache/
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.local
