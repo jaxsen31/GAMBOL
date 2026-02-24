@@ -3,10 +3,14 @@ Settlement, hand comparison, and payout calculation.
 
 Settlement priority (highest to lowest):
     1. Dealer hard 15 surrender  → push (overrides ALL including Ban Ban)
-    2. Player bust (>21)         → player loses 1 unit
+    2. Player bust (>21)         → player loses 1 unit (2 units if exactly 5 cards)
     3. Player ≤15 forfeit        → player loses 1 unit (unconditional, even on dealer bust)
     4. Hand hierarchy comparison → winner's multiplier applied
     5. Total comparison          → regular hands compared by total
+
+Five-card bust symmetry:
+    A 5-card hand that busts pays the 5-card penalty in both directions.
+    Player 5-card bust → -2 units. Dealer 5-card bust → player wins ≥2 units.
 
 Payout convention (from player's perspective):
     +N  = player wins N units
@@ -62,7 +66,7 @@ def settle_hand(
 
     Settlement rules applied in order:
         1. Dealer surrender → PUSH, 0
-        2. Player bust      → LOSS, -1
+        2. Player bust      → LOSS, -1 (or -2 if player has exactly 5 cards)
         3. Player ≤15       → LOSS, -1  (unconditional forfeit)
         4. Special hand / total comparison → multiplier-based payout
     """
@@ -73,8 +77,10 @@ def settle_hand(
     player_total = calculate_total(player_cards)
 
     # ── Rule 2: Player bust ───────────────────────────────────────────────────
+    # A 5-card bust costs 2 units (same penalty as the 5-card bonus, both ways).
     if is_bust(player_total):
-        return Outcome.LOSS, -1.0
+        penalty = 2.0 if len(player_cards) == 5 else 1.0
+        return Outcome.LOSS, -penalty
 
     # ── Rule 3: Player ≤15 unconditional forfeit ──────────────────────────────
     # This applies even if dealer busted — no exceptions.
@@ -86,8 +92,11 @@ def settle_hand(
     # player_type cannot be 'bust' at this point (already handled above)
 
     if dealer_busted:
-        # Dealer bust: player wins at their special hand multiplier (or 1:1)
-        multiplier = PAYOUT_MULTIPLIERS.get(player_type, 1)
+        # Dealer bust: player wins at their special hand multiplier (or 1:1).
+        # If the dealer busted with a 5-card hand, the 5-card bust penalty is
+        # symmetric — the minimum payout to the player is 2 units.
+        dealer_bust_base = 2 if len(dealer_cards) == 5 else 1
+        multiplier = max(PAYOUT_MULTIPLIERS.get(player_type, 1), dealer_bust_base)
         return Outcome.WIN, float(multiplier)
 
     dealer_total = calculate_total(dealer_cards)

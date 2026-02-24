@@ -55,7 +55,7 @@ Achieve a total closest to 21 without exceeding it, beat the dealer's total, and
 | **Ban Ban** | Two Aces (initial deal) | 3:1 | Immediate reveal | Total = 21 (10+11). Beats all non-Ban-Ban hands. Ban Ban vs Ban Ban = push. |
 | **Ban Luck** | Ace + {10,J,Q,K} (initial deal) | 2:1 | Immediate reveal | Beats all regular 21s. Ban Luck vs Ban Luck = push. |
 | **777** | Dealt (7,7), draw third 7 | 7:1 | After drawing 3rd card | Suit-independent. Beats dealer 21. |
-| **Five-card <21** | 5 cards totaling <21 | 2:1 | After 5th card drawn | Solver always announces (see §3.4). |
+| **Five-card <21** | 5 cards totaling <21 | 2:1 | After 5th card drawn | Solver always announces (see §3.4). Bust on 5th card costs 2:1 (see below). |
 | **Five-card =21** | 5 cards totaling exactly 21 | 3:1 | After 5th card drawn | Solver always announces (see §3.4). |
 | **Regular Win** | Beat dealer, no special hand | 1:1 | Showdown | Standard payout. |
 
@@ -69,6 +69,8 @@ Achieve a total closest to 21 without exceeding it, beat the dealer's total, and
 7. Regular <21
 
 **Five-card vs Five-card:** When both hands are five-card, the winner is determined by total comparison, paid at 1:1 (regular win). The five-card bonus multiplier only applies against a non-five-card opponent.
+
+**Five-card bust penalty (symmetric):** A five-card hand that busts (total >21) costs **2 units** in both directions. Player 5-card bust → loses 2 units. Dealer 5-card bust → pays 2 units to each active player (minimum; player's own special-hand multiplier applies if higher).
 
 **Dealer bonuses are fully symmetric:** Dealer collects at the same multipliers (Ban Ban 3:1 collected from player, etc.).
 
@@ -138,7 +140,7 @@ At totals of 16 or 17 (including soft 17), the dealer **may choose** to reveal 3
 
 **Settlement priority (highest to lowest):**
 1. Dealer hard 15 surrender → push (overrides ALL)
-2. Player bust (>21) → player loses 1 unit
+2. Player bust (>21) → player loses 1 unit (2 units if exactly 5 cards: five-card bust penalty)
 3. Player ≤15 forfeit → player loses 1 unit (unconditional, even on dealer bust)
 4. Hand hierarchy comparison → winner's multiplier applied
 5. Total comparison → regular hands compared by total
@@ -311,9 +313,10 @@ def is_hard_fifteen(hand_cards: tuple[int, ...]) -> bool:
 ```python
 def settle_hand(player_cards, dealer_cards, dealer_surrendered, dealer_busted):
     if dealer_surrendered:   return PUSH, 0
-    if player_total > 21:    return LOSS, -1   # bust
+    if player_total > 21:    return LOSS, -2 if len(player_cards)==5 else -1   # bust (5-card bust costs double)
     if player_total <= 15:   return LOSS, -1   # unconditional forfeit
     # ... hand comparison
+    # dealer bust: player wins max(player_multiplier, 2 if len(dealer_cards)==5 else 1)
 ```
 
 **Selective reveal at 16/17 (when dealer chooses to use it):**

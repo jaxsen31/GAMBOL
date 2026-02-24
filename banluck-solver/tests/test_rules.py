@@ -43,7 +43,7 @@ class TestSettleHandDealerSurrender:
 
 
 class TestSettleHandPlayerBust:
-    """Rule 2: Player bust always loses 1 unit."""
+    """Rule 2: Player bust loses 1 unit normally; 5-card bust loses 2 units."""
 
     def test_player_bust_loses_one_unit(self):
         player = hand('10C', 'KH', '5D')   # 25, bust
@@ -58,6 +58,22 @@ class TestSettleHandPlayerBust:
         outcome, payout = settle_hand(player, dealer, dealer_busted=True)
         assert outcome == Outcome.LOSS
         assert payout == -1.0
+
+    def test_player_five_card_bust_loses_two_units(self):
+        """Five-card bust: symmetric penalty — player loses 2 units."""
+        player = hand('10C', 'JD', 'QH', 'KS', '2C')  # 10+10+10+10+2 = 42, 5-card bust
+        dealer = hand('9C', '8H')
+        outcome, payout = settle_hand(player, dealer)
+        assert outcome == Outcome.LOSS
+        assert payout == -2.0
+
+    def test_player_five_card_bust_loses_two_on_dealer_bust(self):
+        """5-card bust still costs 2 even when dealer busted."""
+        player = hand('10C', 'JD', 'QH', 'KS', '2C')  # 5-card bust
+        dealer = hand('10D', 'KH', '5S')               # also bust
+        outcome, payout = settle_hand(player, dealer, dealer_busted=True)
+        assert outcome == Outcome.LOSS
+        assert payout == -2.0
 
 
 class TestSettleHandPlayerForfeit:
@@ -131,6 +147,22 @@ class TestSettleHandDealerBust:
         outcome, payout = settle_hand(player, dealer, dealer_busted=True)
         assert outcome == Outcome.WIN
         assert payout == 2.0
+
+    def test_dealer_five_card_bust_player_regular_wins_two(self):
+        """Dealer 5-card bust: symmetric penalty — regular player wins 2 units."""
+        player = hand('10C', '9H')                         # regular 19
+        dealer = hand('10D', 'JC', 'QH', 'KS', '2C')      # 5-card bust
+        outcome, payout = settle_hand(player, dealer, dealer_busted=True)
+        assert outcome == Outcome.WIN
+        assert payout == 2.0
+
+    def test_dealer_five_card_bust_player_ban_ban_wins_three(self):
+        """Player Ban Ban vs dealer 5-card bust: Ban Ban multiplier (3) takes priority."""
+        player = hand('AC', 'AS')                          # Ban Ban
+        dealer = hand('10D', 'JC', 'QH', 'KS', '2C')      # 5-card bust
+        outcome, payout = settle_hand(player, dealer, dealer_busted=True)
+        assert outcome == Outcome.WIN
+        assert payout == 3.0
 
 
 class TestSettleHandBanBanComparisons:
