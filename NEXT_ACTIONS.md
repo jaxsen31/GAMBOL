@@ -1,6 +1,6 @@
 # NEXT_ACTIONS.md
 > Active planning file — updated frequently. Reflects current project state and immediate next steps.
-> Last updated: 2026-02-28 (Phase 3 third task COMPLETE — strategy heat maps added; 632/632 tests passing)
+> Last updated: 2026-03-01 (Phase 3 COMPLETE — all 5 research questions answered; 686/686 tests passing)
 
 ---
 
@@ -38,7 +38,7 @@
 - **2.3 ✅ `src/analysis/strategy_report.py` — COMPLETE, 14/14 tests passing**
   - D1+D2+D3 all done; `__main__` entry point runs `solve(n_iterations=2000)` + full report
 
-**Total tests: 632/632 verified (Phase 1 + 1.1 + 2.1 + 2.2 + 2.3 + 2.4 + Phase 3 tasks 1–3).**
+**Total tests: 686/686 verified (Phase 1 + 1.1 + 2.1 + 2.2 + 2.3 + 2.4 + Phase 3 tasks 1–8).**
 
 ---
 
@@ -52,7 +52,7 @@ _dealer_cfr termination: correct (no infinite loops)                          �
 _cfr_pass (1 iteration): 4.3 s actual (12.5 s with profiler overhead)        ❌ 43x too slow
 ```
 
-**cProfile breakdown for 1 pass** (profiler-inflated, actual ≈ times × 0.34):
+**Profile breakdown for 1 pass** (profiler-inflated, actual ≈ times × 0.34):
 
 | Function | Calls | Profiler time | Actual est. |
 |---|---|---|---|
@@ -352,9 +352,35 @@ print(f'3 Numba passes: {time.time()-t:.3f}s  (~{(time.time()-t)/3*1000:.1f} ms/
 - [x] Quantify dealer selective reveal advantage (%) — `print_reveal_advantage` in `strategy_report.py`, 6 tests
 - [x] Quantify hard 15 surrender value (% of hands saved) — `print_surrender_value` in `strategy_report.py`, 6 tests
 - [x] Strategy heat maps: player action by (total, num_cards, is_soft) — `src/analysis/heat_maps.py`, 19 tests
-- [ ] Interactive Plotly lookup tool
-- [ ] Variance and bankroll analysis
-- [ ] Answer the 5 key research questions from PRD
+- [x] Interactive Plotly lookup tool — `src/analysis/plotly_lookup.py`, 20 tests
+  - `build_dp_lookup_figure(reveal_mode, show_ev_margin)` — hover: action + EV margin, red/green binary colorscale
+  - `build_cfr_lookup_figure(result)` — hover: P(HIT), continuous RdYlGn colorscale
+  - `build_comparison_figure(result)` — 2×3 grid (DP-off / DP-on / CFR Nash × hard / soft)
+  - `save_lookup_html(fig, path)` — exports self-contained HTML
+- [x] Variance and bankroll analysis — `src/analysis/bankroll.py`, 32 tests
+  - `compute_variance_stats(payouts)` — mean, std, skewness, kurtosis, percentiles
+  - `risk_of_ruin(bankroll, edge, std)` — gambler's ruin formula
+  - `required_bankroll(edge, std, survival_prob)` — inverted ruin formula
+  - `compute_horizon_projections(edge, std, horizons)` — CLT profit projections + CI
+  - `compute_drawdown_stats(payouts, n_trajectories, trajectory_length)` — bootstrap max-drawdown
+  - `compute_fair_rotation(dealer_edge, std)` — Q5 answer: rotate every N*/4 hands
+  - `print_variance_report(...)` + `print_rotation_analysis(...)` — formatted output
+  - `simulate_hands(..., return_payouts=True)` — raw payouts now exposed via `SimulationResult.payouts`
+- [x] SKILL.md — `.claude/skills/banluck-phase3/SKILL.md` (Phase 3 context: payouts, EVs, completed modules, architecture refs)
+- [x] Streamlit dashboard — `banluck-solver/app.py`, 2 tests
+  - 4-tab layout: Strategy Heat Maps / Interactive Plotly Lookup / Bankroll Analysis / Strategy Report
+  - Sidebar: reveal_mode dropdown, CFR iterations slider, Run CFR button, MC hands slider
+  - `@st.cache_resource` for CFR solver; `compute_drawdown_stats` with n_trajectories=200
+  - `streamlit>=1.30.0` added to requirements.txt
+- [x] CFR+ Numba optimizations (fastmath + workspace pre-alloc)
+  - `@numba.njit(cache=True, fastmath=True)` — 5–15% speedup
+  - 5 workspace arrays (`ws_strategies`, `ws_reach_p`, `ws_reach_d`, `ws_ev`, `ws_action_evs`) added to `_NumbaTables`; pre-allocated in `solve()`, cleared with `arr[:] = 0.0` each iteration; eliminates per-iteration heap allocation (10–30% speedup expected)
+- [x] Answer the 5 key research questions from PRD — all answered (see table below)
+
+> **After Phase 3 is complete:** run `/simplify` on all Phase 3 source modules
+> (`heat_maps.py`, `plotly_lookup.py`, variance/bankroll module) to check for
+> reuse, quality, and efficiency issues before the final commit.
+> (Tracked in INFRA.md F1–F3, now archived.)
 
 ---
 
@@ -362,16 +388,18 @@ print(f'3 Numba passes: {time.time()-t:.3f}s  (~{(time.time()-t)/3*1000:.1f} ms/
 
 | # | Question | Answer |
 |---|----------|--------|
-| 1 | How valuable is dealer selective reveal? | +0.84% DP (inf-deck) / +0.96% MC (real-deck) in multi-player context; zero in 1v1. |
-| 2 | Does optimal play differ from BJ basic strategy? | TBD |
+| 1 | How valuable is dealer selective reveal? | +0.84% DP (inf-deck) / +0.96% MC (real-deck) in multi-player context; zero in 1v1 (REVEAL ≡ STAND in heads-up). |
+| 2 | Does optimal play differ from BJ basic strategy? | Yes — two main divergences: (a) **All 4-card soft hands (soft 16–20) should HIT** to chase the five-card bonus; BJ says stand on soft 18–20. (b) **Hard 16 with 4 cards should HIT** (five-card bonus worth the risk); BJ typically says stand. Hard 17+ with 2–3 cards is identical to BJ (always STAND). Strategy is also applied blind to the dealer's upcard (no upcard visibility in the standard game), whereas BJ strategy conditions on the dealer's visible card. The driving force behind both divergences is the five-card bonus (2:1 for <21, 3:1 for 21), which makes hitting a 4-card hand EV-positive even at totals that BJ would stand. |
 | 3 | GTO dealer reveal threshold at 16/17? | In 1v1: indifferent (REVEAL ≡ STAND). Multi-player: requires explicit multi-player solver. |
-| 4 | How often does hard 15 surrender save dealer? | Hard-15 arises in 7.10% of deals (12/169, analytic). At Nash equilibrium the dealer surrenders with GTO probability reported by `print_surrender_value`. Effective surrender rate = 7.10% × P(surrender). |
-| 5 | Fair dealer rotation rate (every N hands)? | TBD |
+| 4 | How often does hard 15 surrender save dealer? | Hard-15 arises in 7.10% of deals (12/169, analytic). At Nash equilibrium the dealer surrenders with GTO probability reported by `print_surrender_value`. Effective surrender rate = 7.10% × P(surrender). Full EV impact visible in the Strategy Report tab of the dashboard. |
+| 5 | Fair dealer rotation rate (every N hands)? | Rotate every N*/4 hands where N* = (σ/h)² is the within-noise threshold (signal ≤ 1σ noise). With reveal_mode=OFF edge ≈ −4.71%/hand and σ ≈ 1.0, N* ≈ 450 hands → recommend rotating every ~112 hands. See `compute_fair_rotation()` in `src/analysis/bankroll.py`. |
 
 ---
 
-## Deferred (Phase 4+)
+## Possible future explorations
 
-- Multi-player solver (4 players + dealer)
-- Card counting viability analysis
-- GUI application
+- Multi-player solver (4 players + dealer) — the selective reveal advantage (+0.96%) only manifests in multi-player; 1v1 analysis is complete
+- Card counting viability analysis — how much does deck composition knowledge reduce the house edge?
+- GUI / web application — productionise the Streamlit dashboard for public use
+- Quantify exact GTO P(surrender) from a fully converged CFR run (10k+ iterations)
+- Exploit-mode analysis: best-response player strategy if dealer is known to always/never surrender

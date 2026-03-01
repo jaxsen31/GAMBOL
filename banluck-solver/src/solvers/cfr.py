@@ -167,6 +167,11 @@ class _NumbaTables:
         surr_strategy_sums:   float64[n_surr_slots, 2].
         act_regrets:          float64[n_act_slots, 3]     — HIT / STAND / REVEAL.
         act_strategy_sums:    float64[n_act_slots, 3].
+        ws_strategies:        float64[n_nodes, 3]  — workspace, re-zeroed each iter.
+        ws_reach_p:           float64[n_nodes]     — workspace, re-zeroed each iter.
+        ws_reach_d:           float64[n_nodes]     — workspace, re-zeroed each iter.
+        ws_ev:                float64[n_nodes]     — workspace, re-zeroed each iter.
+        ws_action_evs:        float64[n_nodes, 3] — workspace, re-zeroed each iter.
     """
 
     player_regrets: np.ndarray
@@ -175,6 +180,11 @@ class _NumbaTables:
     surr_strategy_sums: np.ndarray
     act_regrets: np.ndarray
     act_strategy_sums: np.ndarray
+    ws_strategies: np.ndarray
+    ws_reach_p: np.ndarray
+    ws_reach_d: np.ndarray
+    ws_ev: np.ndarray
+    ws_action_evs: np.ndarray
 
 
 # ─── Internal action constants and info-set key converters ────────────────────
@@ -1250,7 +1260,7 @@ def _make_numba_kernel():
     NB_PLAYER = _NB_PLAYER
     NB_SURR = _NB_SURR
 
-    @numba.njit(cache=True)
+    @numba.njit(cache=True, fastmath=True)
     def _kernel(
         n_nodes,
         node_cat,  # int32[n]   — 0=player, 1=surr, 2=act, 3=terminal
@@ -1271,12 +1281,17 @@ def _make_numba_kernel():
         act_regrets,  # float64[n_act, 3]     — modified in-place
         act_strategy_sums,  # float64[n_act, 3]     — modified in-place
         iteration,  # int64
+        strategies,  # float64[n_nodes, 3]  — workspace, pre-allocated
+        reach_p,  # float64[n_nodes]     — workspace, pre-allocated
+        reach_d,  # float64[n_nodes]     — workspace, pre-allocated
+        ev,  # float64[n_nodes]     — workspace, pre-allocated
+        action_evs,  # float64[n_nodes, 3] — workspace, pre-allocated
     ):
         """CFR+ inner loop: strategy → forward → backward → update → EV."""
         n_init = init_node_idx.shape[0]
 
         # ── Step 1: Compute current strategies ───────────────────────────────
-        strategies = np.zeros((n_nodes, 3))
+        strategies[:] = 0.0
 
         for i in range(n_nodes):
             nc = n_actions[i]
@@ -1322,8 +1337,8 @@ def _make_numba_kernel():
                     strategies[i, j] = inv_nc
 
         # ── Step 2: Forward pass — accumulate reach_p / reach_d ──────────────
-        reach_p = np.zeros(n_nodes)
-        reach_d = np.zeros(n_nodes)
+        reach_p[:] = 0.0
+        reach_d[:] = 0.0
         imm_ev_total = 0.0
 
         for e in range(n_init):
@@ -1359,8 +1374,8 @@ def _make_numba_kernel():
                         reach_d[ci] += child_rd
 
         # ── Step 3: Backward pass — compute EVs bottom-up ────────────────────
-        ev = np.zeros(n_nodes)
-        action_evs = np.zeros((n_nodes, 3))
+        ev[:] = 0.0
+        action_evs[:] = 0.0
 
         for i in range(n_nodes):
             if n_actions[i] == 0:
@@ -1487,6 +1502,11 @@ def _cfr_pass_numba(numba_arrays: tuple, tables: _NumbaTables, iteration: int) -
         tables.act_regrets,
         tables.act_strategy_sums,
         iteration,
+        tables.ws_strategies,
+        tables.ws_reach_p,
+        tables.ws_reach_d,
+        tables.ws_ev,
+        tables.ws_action_evs,
     )
 
 
@@ -2126,6 +2146,7 @@ def solve(
             act_rev,
         ) = na
 
+        n_nodes = len(na[0])  # na[0] = node_cat array
         nt = _NumbaTables(
             player_regrets=np.zeros((n_player_slots, 2)),
             player_strategy_sums=np.zeros((n_player_slots, 2)),
@@ -2133,6 +2154,11 @@ def solve(
             surr_strategy_sums=np.zeros((n_surr_slots, 2)),
             act_regrets=np.zeros((n_act_slots, 3)),
             act_strategy_sums=np.zeros((n_act_slots, 3)),
+            ws_strategies=np.zeros((n_nodes, 3)),
+            ws_reach_p=np.zeros(n_nodes),
+            ws_reach_d=np.zeros(n_nodes),
+            ws_ev=np.zeros(n_nodes),
+            ws_action_evs=np.zeros((n_nodes, 3)),
         )
 
         for iteration in range(1, n_iterations + 1):

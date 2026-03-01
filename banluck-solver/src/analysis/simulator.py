@@ -64,6 +64,8 @@ class SimulationResult:
         n_wins:        Hands where payout > 0.
         n_losses:      Hands where payout < 0.
         n_pushes:      Hands where payout == 0.
+        payouts:       Raw per-hand payout array (float64, length n_hands), or None
+                       if simulate_hands() was called with return_payouts=False.
     """
 
     n_hands: int
@@ -76,6 +78,7 @@ class SimulationResult:
     n_wins: int
     n_losses: int
     n_pushes: int
+    payouts: np.ndarray | None = None
 
     def __str__(self) -> str:
         sign = "+" if self.mean_ev >= 0 else ""
@@ -206,6 +209,7 @@ def simulate_hands(
     n_hands: int = 100_000,
     seed: int | None = 42,
     reveal_mode: bool = False,
+    return_payouts: bool = False,
 ) -> SimulationResult:
     """Simulate n_hands of Banluck and return aggregate statistics.
 
@@ -223,6 +227,9 @@ def simulate_hands(
         reveal_mode:              If False, use play_hand() (no selective reveal).
                                   If True, use selective reveal: 3+-card players
                                   settle against dealer's initial 16/17 total.
+        return_payouts:           If True, attach raw per-hand payout array
+                                  (float64, length n_hands) to SimulationResult.payouts.
+                                  Defaults to False to avoid extra memory allocation.
 
     Returns:
         SimulationResult with EV statistics for the run.
@@ -274,6 +281,7 @@ def simulate_hands(
         n_wins=n_wins,
         n_losses=n_losses,
         n_pushes=n_pushes,
+        payouts=arr if return_payouts else None,
     )
 
 

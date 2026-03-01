@@ -95,3 +95,44 @@ See `NEXT_ACTIONS.md` for the full task list. Key design decisions already made:
 - Two runs: `reveal_mode=ON` (dealer always reveals 3+-card players at 16/17) and `reveal_mode=OFF` (all players settle against final total)
 - Output: two strategy charts + EV comparison, keyed on `(player_total, hand_size, dealer_upcard)`
 - Validation: Monte Carlo cross-check within ±0.1% EV
+
+---
+
+## Thai Baccarat (Pok Deng) Solver
+
+A second solver project lives in `thai-baccarat-solver/`. It uses the same
+engine/solvers/analysis layering as the Banluck solver.
+
+### Commands
+
+All commands run from `thai-baccarat-solver/` with `PYTHONPATH=.` set:
+
+```bash
+# Run all tests
+cd thai-baccarat-solver && PYTHONPATH=. python -m pytest tests/ -v
+
+# Run a single test file
+cd thai-baccarat-solver && PYTHONPATH=. python -m pytest tests/test_engine.py -v
+
+# Run with coverage
+cd thai-baccarat-solver && PYTHONPATH=. python -m pytest tests/ --cov=src -v
+```
+
+### Game Rules
+
+Full Pok Deng rules (card values, hand combinations, multipliers, settlement
+priority) are documented in:
+`thai-baccarat-solver/docs/pok_deng_rules.md`
+
+### Architecture
+
+Mirrors the Banluck solver layout:
+
+- `src/engine/` — pure game logic (cards, deck, hand value, special combos, settlement)
+- `src/solvers/` — GTO solvers (DP baseline, CFR+)
+- `src/analysis/` — Monte Carlo simulator, EV tables, visualizations
+
+### GSD Workflow
+
+Planning artifacts live in `thai-baccarat-solver/.planning/` (created by
+`/gsd:new-project`). GSD slash commands are installed at `.claude/commands/`.

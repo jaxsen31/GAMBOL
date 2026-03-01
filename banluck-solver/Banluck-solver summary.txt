@@ -1,0 +1,27 @@
+Banluck Solver — Project Summary
+
+  What it is: A Game Theory Optimal (GTO) solver for Banluck (Chinese Blackjack), a variant of Blackjack played across Southeast Asia. The
+  goal is to compute optimal strategies and quantify the house edge under different dealer rule variants.
+
+  Tech stack: Python, NumPy, Numba (JIT), Plotly, pytest.
+
+  Key rules that differ from standard Blackjack:
+  - Ace valuation changes based on hand size (2-card vs 3+-card)
+  - Dealer hard-15 surrender → push (overrides everything, including Ban Ban)
+  - Player ≤15 forfeit → unconditional loss (even on dealer bust)
+  - Special hands with bonus payouts: Ban Ban (3:1), Ban Luck (2:1), 777 (7:1), Five-card 21 (3:1), Five-card <21 (2:1)
+  - Dealer optional "selective reveal" mechanic at 16/17 — modelled as an explicit strategic node
+
+  Solver architecture (all complete):
+  1. Game engine — pure rule logic (cards, deck, hand totals, special hand detection, settlement)
+  2. DP Baseline Solver — infinite-deck backward induction; two modes (reveal ON/OFF); EV delta ~+0.84% from selective reveal
+  3. CFR+ Solver — counterfactual regret minimisation with Numba JIT (~6.7 ms/pass); models dealer reveal as an explicit action node; finds
+  Nash equilibrium strategies
+  4. Monte Carlo Simulator — real-deck cross-validation; real-deck baseline EVs: reveal_off ≈ −4.71%, reveal_on ≈ −3.75%
+  5. Analysis layer — strategy reports, heat maps (Plotly), Q&A research functions
+
+  Current status: 632 tests passing. Phase 3 in progress — next tasks are an interactive Plotly lookup tool, variance/bankroll analysis, and
+  remaining research questions (Q2, Q5).
+
+  Looking for: Agents, skills, or tools to help with data visualisation (Plotly dashboards), game theory analysis, Monte Carlo simulation, or
+   Python performance optimisation.

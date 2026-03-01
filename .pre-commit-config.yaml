@@ -26,5 +26,5 @@ repos:
     rev: 1.7.9
     hooks:
       - id: bandit
-        args: ["-r", "banluck-solver/src/", "-ll", "--skip", "B101,B311"]
+        args: ["-r", "banluck-solver/src/", "thai-baccarat-solver/src/", "-ll", "--skip", "B101,B311"]
         pass_filenames: false
