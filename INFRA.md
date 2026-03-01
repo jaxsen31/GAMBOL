@@ -9,12 +9,12 @@
 
 | Area | Status |
 |---|---|
-| Config files created | ✅ Done (this session) |
-| Tools installed locally | ⬜ Pending |
-| Lint violations fixed | ⬜ Pending |
-| Security scans verified | ⬜ Pending |
+| Config files created | ✅ Done |
+| Tools installed locally | ✅ Done (2026-03-01) |
+| Lint violations fixed | ✅ Done (2026-03-01) |
+| Security scans verified | ✅ Done (2026-03-01) |
 | CI green on GitHub | ⬜ Pending |
-| Pre-commit active locally | ⬜ Pending |
+| Pre-commit active locally | ✅ Done (2026-03-01) |
 | /simplify workflow adopted | ⬜ Pending |
 
 ---
@@ -22,38 +22,38 @@
 ## A — Install tools locally
 > Do these once in a terminal. All subsequent tasks depend on them.
 
-- [ ] **A1** — `pip install ruff` (linter + formatter)
-- [ ] **A2** — `pip install bandit` (security scanner)
-- [ ] **A3** — `pip install pip-audit` (dependency CVE scanner)
-- [ ] **A4** — `pip install pre-commit` (git hook manager)
+- [x] **A1** — `pip install ruff` (linter + formatter)
+- [x] **A2** — `pip install bandit` (security scanner)
+- [x] **A3** — `pip install pip-audit` (dependency CVE scanner)
+- [x] **A4** — `pip install pre-commit` (git hook manager)
 
 ---
 
 ## B — Fix any existing lint violations
 > Run from repo root. Ruff will auto-fix what it can; review the rest manually.
 
-- [ ] **B1** — `ruff check banluck-solver/src/ --fix` — auto-fix lint issues in source
-- [ ] **B2** — `ruff check banluck-solver/tests/ --fix` — auto-fix lint issues in tests
-- [ ] **B3** — `ruff format banluck-solver/src/ banluck-solver/tests/` — apply formatting
-- [ ] **B4** — `ruff check banluck-solver/src/ banluck-solver/tests/` — confirm 0 violations remaining
-- [ ] **B5** — commit any ruff-generated fixes: `git add -u && git commit -m "style: apply ruff lint + format fixes"`
+- [x] **B1** — `ruff check banluck-solver/src/ --fix` — auto-fix lint issues in source
+- [x] **B2** — `ruff check banluck-solver/tests/ --fix` — auto-fix lint issues in tests
+- [x] **B3** — `ruff format banluck-solver/src/ banluck-solver/tests/` — apply formatting
+- [x] **B4** — `ruff check banluck-solver/src/ banluck-solver/tests/` — confirm 0 violations remaining
+- [x] **B5** — commit: `style: apply ruff lint + format fixes; activate pre-commit hooks`
 
 ---
 
 ## C — Verify security scans pass
 > These should pass clean on first run. Fix any findings before enabling CI.
 
-- [ ] **C1** — `pip-audit --requirement banluck-solver/requirements.txt` — confirm 0 CVEs
-- [ ] **C2** — `bandit -r banluck-solver/src/ -ll --skip B101,B311 -f txt` — confirm 0 high/medium issues
+- [x] **C1** — `pip-audit --requirement banluck-solver/requirements.txt` — 0 CVEs ✅
+- [x] **C2** — `bandit -r banluck-solver/src/ -ll --skip B101,B311 -f txt` — 0 issues ✅
 
 ---
 
 ## D — Activate pre-commit hooks
 > One-time per dev machine. Hooks run automatically on every `git commit` after this.
 
-- [ ] **D1** — `pre-commit install` (run from repo root `/workspaces/GAMBOL/`)
-- [ ] **D2** — `pre-commit run --all-files` — dry-run against entire repo; fix any findings
-- [ ] **D3** — make a trivial commit to confirm hooks fire without errors
+- [x] **D1** — `pre-commit install` (run from repo root `/workspaces/GAMBOL/`)
+- [x] **D2** — `pre-commit run --all-files` — all 9 hooks green (fixed bandit `pass_filenames: false`)
+- [x] **D3** — hooks fired clean on the B5 commit above
 
 ---
 
