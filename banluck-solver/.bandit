@@ -1,0 +1,5 @@
+[bandit]
+# B101 — assert statements: used legitimately throughout test suite
+# B311 — random: numpy.random used for Monte Carlo simulation, not cryptography
+skips = B101,B311
+exclude_dirs = tests,__pycache__

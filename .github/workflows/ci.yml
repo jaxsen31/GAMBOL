@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    name: "Tests & lint — Python ${{ matrix.python-version }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r banluck-solver/requirements.txt
+          pip install ruff pip-audit bandit
+
+      # --- Code quality ---
+
+      - name: Lint (ruff)
+        run: ruff check banluck-solver/src/ banluck-solver/tests/
+
+      - name: Format check (ruff)
+        run: ruff format --check banluck-solver/src/ banluck-solver/tests/
+
+      # --- Security ---
+
+      - name: Security scan (bandit)
+        run: |
+          bandit -r banluck-solver/src/ \
+            -ll \
+            --skip B101,B311 \
+            -f txt
+
+      - name: Dependency vulnerability scan (pip-audit)
+        run: pip-audit --requirement banluck-solver/requirements.txt
+
+      # --- Tests ---
+
+      - name: Run tests with coverage
+        run: |
+          cd banluck-solver
+          PYTHONPATH=. python -m pytest tests/ \
+            --cov=src \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-fail-under=75 \
+            -x \
+            -q
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "coverage-py${{ matrix.python-version }}"
+          path: banluck-solver/coverage.xml
+          retention-days: 7
