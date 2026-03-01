@@ -6,9 +6,9 @@ import pytest
 
 from src.engine.cards import (
     RANK_ACE,
+    RANK_NAMES,
     RANK_SEVEN,
     RANK_VALUES,
-    RANK_NAMES,
     SUIT_NAMES,
     TEN_VALUE_RANKS,
     card_rank,
@@ -34,12 +34,12 @@ class TestCardEncoding:
             assert 0 <= card_suit(card) <= 3
 
     def test_two_of_clubs_is_card_zero(self):
-        assert card_rank(0) == 0   # rank 0 = '2'
-        assert card_suit(0) == 0   # suit 0 = 'C'
+        assert card_rank(0) == 0  # rank 0 = '2'
+        assert card_suit(0) == 0  # suit 0 = 'C'
 
     def test_ace_of_spades_is_card_51(self):
         assert card_rank(51) == RANK_ACE  # 12
-        assert card_suit(51) == 3          # 'S'
+        assert card_suit(51) == 3  # 'S'
 
     def test_ace_of_clubs_is_card_48(self):
         assert card_rank(48) == RANK_ACE
@@ -89,23 +89,23 @@ class TestCardValue:
 
 class TestCardToStr:
     def test_two_of_clubs(self):
-        assert card_to_str(0) == '2C'
+        assert card_to_str(0) == "2C"
 
     def test_ace_of_spades(self):
-        assert card_to_str(51) == 'AS'
+        assert card_to_str(51) == "AS"
 
     def test_ace_of_clubs(self):
-        assert card_to_str(48) == 'AC'
+        assert card_to_str(48) == "AC"
 
     def test_ten_of_clubs(self):
-        assert card_to_str(32) == '10C'
+        assert card_to_str(32) == "10C"
 
     def test_jack_of_diamonds(self):
-        assert card_to_str(37) == 'JD'
+        assert card_to_str(37) == "JD"
 
     def test_seven_of_hearts(self):
         # 7 is rank index 5, heart is suit 2 -> 5*4+2=22
-        assert card_to_str(22) == '7H'
+        assert card_to_str(22) == "7H"
 
     def test_roundtrip_all_cards(self):
         for card in range(52):
@@ -114,47 +114,47 @@ class TestCardToStr:
 
 class TestStrToCard:
     def test_two_of_clubs(self):
-        assert str_to_card('2C') == 0
+        assert str_to_card("2C") == 0
 
     def test_ace_of_spades(self):
-        assert str_to_card('AS') == 51
+        assert str_to_card("AS") == 51
 
     def test_ten_of_clubs(self):
-        assert str_to_card('10C') == 32
+        assert str_to_card("10C") == 32
 
     def test_seven_of_hearts(self):
-        assert str_to_card('7H') == 22
+        assert str_to_card("7H") == 22
 
     def test_king_of_spades(self):
         # K is rank 11, S is suit 3 -> 11*4+3=47
-        assert str_to_card('KS') == 47
+        assert str_to_card("KS") == 47
 
     def test_invalid_rank_raises(self):
         with pytest.raises(ValueError):
-            str_to_card('1C')  # '1' is not a valid rank
+            str_to_card("1C")  # '1' is not a valid rank
 
     def test_invalid_suit_raises(self):
         with pytest.raises(ValueError):
-            str_to_card('AX')  # 'X' is not a valid suit
+            str_to_card("AX")  # 'X' is not a valid suit
 
     def test_all_suits(self):
         for suit_idx, suit_char in enumerate(SUIT_NAMES):
-            card = str_to_card(f'A{suit_char}')
+            card = str_to_card(f"A{suit_char}")
             assert card_suit(card) == suit_idx
 
     def test_all_ranks(self):
         for rank_idx, rank_char in enumerate(RANK_NAMES):
-            card = str_to_card(f'{rank_char}C')
+            card = str_to_card(f"{rank_char}C")
             assert card_rank(card) == rank_idx
 
 
 class TestHandToStr:
     def test_two_card_hand(self):
-        result = hand_to_str((48, 51))   # AC AS
-        assert result == 'AC AS'
+        result = hand_to_str((48, 51))  # AC AS
+        assert result == "AC AS"
 
     def test_single_card(self):
-        assert hand_to_str((0,)) == '2C'
+        assert hand_to_str((0,)) == "2C"
 
     def test_empty_hand(self):
-        assert hand_to_str(()) == ''
+        assert hand_to_str(()) == ""

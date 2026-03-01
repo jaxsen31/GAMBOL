@@ -24,13 +24,11 @@ from enum import Enum, auto
 
 from .hand import calculate_total, is_bust
 from .special_hands import (
+    HAND_777,
     HAND_BAN_BAN,
     HAND_BAN_LUCK,
-    HAND_777,
     HAND_FIVE_CARD_21,
     HAND_FIVE_CARD_SUB21,
-    HAND_REGULAR,
-    HAND_BUST,
     PAYOUT_MULTIPLIERS,
     classify_hand,
     hand_hierarchy_rank,
@@ -44,6 +42,7 @@ class Outcome(Enum):
 
 
 # ─── Core settlement function ─────────────────────────────────────────────────
+
 
 def settle_hand(
     player_cards: tuple[int, ...],
@@ -171,6 +170,7 @@ def _resolve_same_tier(
 
 
 # ─── Convenience helpers ──────────────────────────────────────────────────────
+
 
 def calculate_payout(outcome: Outcome, payout_units: float, bet: float = 1.0) -> float:
     """Convert a payout in units to a dollar amount given the bet size.

@@ -23,7 +23,6 @@ from src.analysis.strategy_report import (
 )
 from src.engine.game_state import DealerAction
 from src.solvers.cfr import CfrResult, solve
-from src.solvers.information_sets import DealerActionInfoSet, DealerSurrenderInfoSet
 
 
 @pytest.fixture(scope="module")
@@ -32,6 +31,7 @@ def result() -> CfrResult:
 
 
 # ─── print_nash_ev ────────────────────────────────────────────────────────────
+
 
 class TestPrintNashEv:
     def test_output_non_empty(self, result: CfrResult, capsys: pytest.CaptureFixture) -> None:
@@ -65,6 +65,7 @@ class TestPrintNashEv:
 
 # ─── print_surrender_strategy ─────────────────────────────────────────────────
 
+
 class TestPrintSurrenderStrategy:
     def test_output_non_empty(self, result: CfrResult, capsys: pytest.CaptureFixture) -> None:
         print_surrender_strategy(result)
@@ -90,6 +91,7 @@ class TestPrintSurrenderStrategy:
 
 # ─── print_dealer_strategy ────────────────────────────────────────────────────
 
+
 class TestPrintDealerStrategy:
     def test_output_non_empty(self, result: CfrResult, capsys: pytest.CaptureFixture) -> None:
         print_dealer_strategy(result)
@@ -111,8 +113,7 @@ class TestPrintDealerStrategy:
     def test_reveal_legal_at_16_with_multicard_player(self, result: CfrResult) -> None:
         # Any DealerActionInfoSet at total 16 with player_nc >= 3 should exist.
         nodes_16 = [
-            k for k in result.dealer_action_strategy
-            if k.dealer_total == 16 and k.player_nc >= 3
+            k for k in result.dealer_action_strategy if k.dealer_total == 16 and k.player_nc >= 3
         ]
         assert len(nodes_16) > 0, "No dealer-16 nodes with 3+-card player found"
 
@@ -124,26 +125,21 @@ class TestPrintDealerStrategy:
 
 # ─── print_reveal_advantage ───────────────────────────────────────────────────
 
+
 class TestPrintRevealAdvantage:
-    def test_output_not_empty(
-        self, result: CfrResult, capsys: pytest.CaptureFixture
-    ) -> None:
+    def test_output_not_empty(self, result: CfrResult, capsys: pytest.CaptureFixture) -> None:
         print_reveal_advantage(result)
         captured = capsys.readouterr()
         assert len(captured.out.strip()) > 0
 
-    def test_has_section_headers(
-        self, result: CfrResult, capsys: pytest.CaptureFixture
-    ) -> None:
+    def test_has_section_headers(self, result: CfrResult, capsys: pytest.CaptureFixture) -> None:
         print_reveal_advantage(result)
         captured = capsys.readouterr()
         assert "Reveal Advantage" in captured.out
         assert "GTO Reveal Frequency" in captured.out
         assert "Research Question" in captured.out
 
-    def test_ev_deltas_in_output(
-        self, result: CfrResult, capsys: pytest.CaptureFixture
-    ) -> None:
+    def test_ev_deltas_in_output(self, result: CfrResult, capsys: pytest.CaptureFixture) -> None:
         print_reveal_advantage(result)
         captured = capsys.readouterr()
         dp_delta_pct = (_DP_EV_REVEAL_ON - _DP_EV_REVEAL_OFF) * 100
@@ -174,22 +170,23 @@ class TestPrintRevealAdvantage:
         captured = capsys.readouterr()
         assert "Q1" in captured.out
         assert "Q3" in captured.out
-        assert "indifference" in captured.out.lower() or "indifferent" in captured.out.lower() or "REVEAL_PLAYER" in captured.out
+        assert (
+            "indifference" in captured.out.lower()
+            or "indifferent" in captured.out.lower()
+            or "REVEAL_PLAYER" in captured.out
+        )
 
 
 # ─── print_surrender_value ────────────────────────────────────────────────────
 
+
 class TestPrintSurrenderValue:
-    def test_output_not_empty(
-        self, result: CfrResult, capsys: pytest.CaptureFixture
-    ) -> None:
+    def test_output_not_empty(self, result: CfrResult, capsys: pytest.CaptureFixture) -> None:
         print_surrender_value(result)
         captured = capsys.readouterr()
         assert len(captured.out.strip()) > 0
 
-    def test_has_section_headers(
-        self, result: CfrResult, capsys: pytest.CaptureFixture
-    ) -> None:
+    def test_has_section_headers(self, result: CfrResult, capsys: pytest.CaptureFixture) -> None:
         print_surrender_value(result)
         captured = capsys.readouterr()
         assert "Surrender Value" in captured.out
@@ -206,16 +203,19 @@ class TestPrintSurrenderValue:
 
     def test_surrender_prob_in_unit_interval(self, result: CfrResult) -> None:
         from src.solvers.cfr import get_dealer_surrender_prob
+
         p = get_dealer_surrender_prob(result)
         assert 0.0 <= p <= 1.0, f"P(surrender) out of [0, 1]: {p}"
 
     def test_effective_rate_in_output(
         self, result: CfrResult, capsys: pytest.CaptureFixture
     ) -> None:
-        from src.solvers.cfr import get_dealer_surrender_prob
         print_surrender_value(result)
         captured = capsys.readouterr()
-        assert "Effective surrender rate" in captured.out or "effective surrender rate" in captured.out.lower()
+        assert (
+            "Effective surrender rate" in captured.out
+            or "effective surrender rate" in captured.out.lower()
+        )
 
     def test_research_answer_q4_present(
         self, result: CfrResult, capsys: pytest.CaptureFixture

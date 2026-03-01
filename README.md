@@ -1,5 +1,5 @@
 # GAMBOL
-GTO Ban luck and maybe Thai Baccarat 
+GTO Ban luck and maybe Thai Baccarat
 
 # Banluck Solver
 

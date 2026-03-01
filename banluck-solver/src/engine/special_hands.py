@@ -21,13 +21,13 @@ from .hand import calculate_total
 
 # ─── Hand type string constants ───────────────────────────────────────────────
 
-HAND_BAN_BAN: str = 'ban_ban'
-HAND_BAN_LUCK: str = 'ban_luck'
-HAND_777: str = '777'
-HAND_FIVE_CARD_21: str = 'five_card_21'
-HAND_FIVE_CARD_SUB21: str = 'five_card_sub21'
-HAND_REGULAR: str = 'regular'
-HAND_BUST: str = 'bust'
+HAND_BAN_BAN: str = "ban_ban"
+HAND_BAN_LUCK: str = "ban_luck"
+HAND_777: str = "777"
+HAND_FIVE_CARD_21: str = "five_card_21"
+HAND_FIVE_CARD_SUB21: str = "five_card_sub21"
+HAND_REGULAR: str = "regular"
+HAND_BUST: str = "bust"
 
 # Hierarchy rank: lower number = stronger hand
 _HIERARCHY: dict[str, int] = {
@@ -52,6 +52,7 @@ PAYOUT_MULTIPLIERS: dict[str, int] = {
 
 
 # ─── Detection functions ───────────────────────────────────────────────────────
+
 
 def is_ban_ban(cards: tuple[int, ...]) -> bool:
     """Return True if the hand is a Ban Ban (two aces, exactly 2 cards).
@@ -177,6 +178,7 @@ def is_hard_fifteen(cards: tuple[int, ...]) -> bool:
 
 
 # ─── Classification ───────────────────────────────────────────────────────────
+
 
 def classify_hand(cards: tuple[int, ...]) -> str:
     """Classify a hand into its type string.

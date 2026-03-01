@@ -23,21 +23,18 @@ import pytest
 
 from src.engine.game_state import DealerAction, PlayerAction
 from src.solvers.cfr import (
-    CfrResult,
-    _CfrTables,
-    _D_HIT,
     _D_REVEAL,
-    _D_STAND,
-    _D_SURRENDER,
-    _D_CONTINUE,
     _P_HIT,
     _P_STAND,
+    CfrResult,
+    _best_dealer_ev,
+    _best_player_ev,
     _build_initial_deals,
     _cfr_settle,
+    _CfrTables,
     _dealer_action_key,
     _dealer_cfr,
     _dealer_surrender_key,
-    _extract_avg_strategy,
     _get_strategy,
     _is_dealer_ban_ban,
     _is_dealer_ban_luck,
@@ -52,8 +49,6 @@ from src.solvers.cfr import (
     _settle_player_ban_ban,
     _settle_player_ban_luck,
     _update_strategy_sum,
-    _best_player_ev,
-    _best_dealer_ev,
     compute_exploitability,
     get_dealer_surrender_prob,
     get_player_action,
@@ -61,18 +56,18 @@ from src.solvers.cfr import (
 )
 from src.solvers.information_sets import (
     DealerActionInfoSet,
-    DealerSurrenderInfoSet,
     PlayerHitStandInfoSet,
 )
 
-
 # ─── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_tables() -> _CfrTables:
     return _CfrTables()
 
 
 # ─── TestRegretMatching ────────────────────────────────────────────────────────
+
 
 class TestRegretMatching:
     """_get_strategy, _update_strategy_sum, regret update helpers."""
@@ -165,9 +160,7 @@ class TestRegretMatching:
 
     def test_dealer_regret_update_minimizer(self) -> None:
         rt: dict = {}
-        info_set = DealerActionInfoSet(
-            dealer_total=16, dealer_nc=2, is_soft=False, player_nc=2
-        )
+        info_set = DealerActionInfoSet(dealer_total=16, dealer_nc=2, is_soft=False, player_nc=2)
         actions = [DealerAction.HIT, DealerAction.STAND]
         action_evs = {DealerAction.HIT: 0.3, DealerAction.STAND: 0.5}
         node_ev = 0.4
@@ -194,6 +187,7 @@ class TestRegretMatching:
 
 
 # ─── TestCompositionHelpers ────────────────────────────────────────────────────
+
 
 class TestCompositionHelpers:
     """_is_hard_fifteen_comp, _is_player/dealer_ban_ban/luck."""
@@ -233,6 +227,7 @@ class TestCompositionHelpers:
 
 
 # ─── TestSettlement ────────────────────────────────────────────────────────────
+
 
 class TestSettlement:
     """_cfr_settle and special-hand settlement functions."""
@@ -332,6 +327,7 @@ class TestSettlement:
 
 # ─── TestInitialDeals ──────────────────────────────────────────────────────────
 
+
 class TestInitialDeals:
     """_build_initial_deals: probability invariants and composition coverage."""
 
@@ -374,6 +370,7 @@ class TestInitialDeals:
 
 # ─── TestCfrTables ─────────────────────────────────────────────────────────────
 
+
 class TestCfrTables:
     """_CfrTables dataclass initialisation."""
 
@@ -395,6 +392,7 @@ class TestCfrTables:
 
 
 # ─── TestDealerCfr ─────────────────────────────────────────────────────────────
+
 
 class TestDealerCfr:
     """_dealer_cfr terminal, forced-hit, and strategic-decision cases."""
@@ -429,19 +427,19 @@ class TestDealerCfr:
     def test_dealer_strategic_at_16_updates_regrets(self) -> None:
         tables = _make_tables()
         # Dealer at 16 hard (nat=16, na=0, nc=2), player has 2 cards
-        ev = _dealer_cfr(18, 0, 2, 16, 0, 2, 1.0, 1.0, tables, 1)
+        _dealer_cfr(18, 0, 2, 16, 0, 2, 1.0, 1.0, tables, 1)
         assert _dealer_action_key(16, 2, False, 2) in tables.dealer_action_regrets
 
     def test_dealer_strategic_at_17_soft_updates_regrets(self) -> None:
         tables = _make_tables()
         # Dealer soft 17: nat=6, na=1, nc=2 → total=17, is_soft=True
-        ev = _dealer_cfr(18, 0, 2, 6, 1, 2, 1.0, 1.0, tables, 1)
+        _dealer_cfr(18, 0, 2, 6, 1, 2, 1.0, 1.0, tables, 1)
         assert _dealer_action_key(17, 2, True, 2) in tables.dealer_action_regrets
 
     def test_dealer_reveal_player_legal_for_nc3(self) -> None:
         tables = _make_tables()
         # Player has 3 cards: player_nc=3, dealer at 16
-        ev = _dealer_cfr(18, 0, 3, 16, 0, 2, 1.0, 1.0, tables, 1)
+        _dealer_cfr(18, 0, 3, 16, 0, 2, 1.0, 1.0, tables, 1)
         key = _dealer_action_key(16, 2, False, 3)
         assert key in tables.dealer_action_regrets
         # REVEAL_PLAYER (_D_REVEAL) should be in the regrets (legal at player_nc=3)
@@ -449,6 +447,7 @@ class TestDealerCfr:
 
 
 # ─── TestPlayerCfr ─────────────────────────────────────────────────────────────
+
 
 class TestPlayerCfr:
     """_player_cfr terminal, forced-stand, and decision cases."""
@@ -468,19 +467,19 @@ class TestPlayerCfr:
     def test_player_at_21_forced_stand(self) -> None:
         tables = _make_tables()
         # Player nat=21, na=0, nc=3 → total=21 (forced stand → dealer phase)
-        ev = _player_cfr(21, 0, 3, 10, 0, 2, 1.0, 1.0, tables, 1)
+        _player_cfr(21, 0, 3, 10, 0, 2, 1.0, 1.0, tables, 1)
         # No player decision node at 21
         assert _player_key(21, 3, False) not in tables.player_regrets
 
     def test_player_at_5_cards_forced_stand(self) -> None:
         tables = _make_tables()
         # Player 5 cards, total=18 → forced stand
-        ev = _player_cfr(18, 0, 5, 10, 0, 2, 1.0, 1.0, tables, 1)
+        _player_cfr(18, 0, 5, 10, 0, 2, 1.0, 1.0, tables, 1)
         assert _player_key(18, 5, False) not in tables.player_regrets
 
     def test_player_decision_at_17_updates_regrets(self) -> None:
         tables = _make_tables()
-        ev = _player_cfr(17, 0, 2, 10, 0, 2, 1.0, 1.0, tables, 1)
+        _player_cfr(17, 0, 2, 10, 0, 2, 1.0, 1.0, tables, 1)
         assert _player_key(17, 2, False) in tables.player_regrets
 
     def test_player_decision_at_16_has_both_actions(self) -> None:
@@ -499,28 +498,29 @@ class TestPlayerCfr:
 
 # ─── TestRootCfr ───────────────────────────────────────────────────────────────
 
+
 class TestRootCfr:
     """_root_cfr integration: surrender + special hands + player/dealer phases."""
 
     def test_dealer_hard15_surrender_creates_surrender_node(self) -> None:
         tables = _make_tables()
         # Dealer hard 15: nat=15, na=0, nc=2
-        p_comp = (5, 0, 2)    # player total=5 (low, not special)
-        d_comp = (15, 0, 2)   # dealer hard 15
-        ev = _root_cfr(p_comp, d_comp, 1.0, 1.0, tables, 1)
+        p_comp = (5, 0, 2)  # player total=5 (low, not special)
+        d_comp = (15, 0, 2)  # dealer hard 15
+        _root_cfr(p_comp, d_comp, 1.0, 1.0, tables, 1)
         assert _dealer_surrender_key(15, True) in tables.dealer_surrender_regrets
 
     def test_dealer_no_surrender_non_hard15(self) -> None:
         tables = _make_tables()
         p_comp = (10, 0, 2)  # player total=10
         d_comp = (10, 0, 2)  # dealer hard 20, no surrender option
-        ev = _root_cfr(p_comp, d_comp, 1.0, 1.0, tables, 1)
+        _root_cfr(p_comp, d_comp, 1.0, 1.0, tables, 1)
         assert _dealer_surrender_key(20, False) not in tables.dealer_surrender_regrets
 
     def test_player_ban_ban_returns_immediate_settlement(self) -> None:
         tables = _make_tables()
         # Player Ban Ban (0, 2, 2) vs dealer regular hand
-        p_comp = (0, 2, 2)   # Ban Ban
+        p_comp = (0, 2, 2)  # Ban Ban
         d_comp = (10, 0, 2)  # dealer 20 regular
         ev = _root_cfr(p_comp, d_comp, 1.0, 1.0, tables, 1)
         # Player Ban Ban wins 3:1 vs any non-Ban-Ban dealer
@@ -538,7 +538,7 @@ class TestRootCfr:
     def test_player_ban_luck_vs_dealer_ban_ban(self) -> None:
         tables = _make_tables()
         p_comp = (10, 1, 2)  # Player Ban Luck
-        d_comp = (0, 2, 2)   # Dealer Ban Ban
+        d_comp = (0, 2, 2)  # Dealer Ban Ban
         ev = _root_cfr(p_comp, d_comp, 1.0, 1.0, tables, 1)
         assert ev == -3.0  # Ban Luck loses to dealer Ban Ban
 
@@ -546,7 +546,7 @@ class TestRootCfr:
         tables = _make_tables()
         p_comp = (17, 0, 2)  # player hard 17
         d_comp = (10, 0, 2)  # dealer hard 20
-        ev = _root_cfr(p_comp, d_comp, 1.0, 1.0, tables, 1)
+        _root_cfr(p_comp, d_comp, 1.0, 1.0, tables, 1)
         assert _player_key(17, 2, False) in tables.player_regrets
 
     def test_surrender_with_player_ban_ban_uses_no_surrender_ev(self) -> None:
@@ -554,15 +554,16 @@ class TestRootCfr:
         tables = _make_tables()
         # Dealer hard 15, player Ban Ban. If dealer surrenders → push.
         # CFR will find the dealer surrender strategy based on EV difference.
-        p_comp = (0, 2, 2)   # Player Ban Ban
+        p_comp = (0, 2, 2)  # Player Ban Ban
         d_comp = (15, 0, 2)  # Dealer hard 15
-        ev = _root_cfr(p_comp, d_comp, 1.0, 1.0, tables, 1)
+        _root_cfr(p_comp, d_comp, 1.0, 1.0, tables, 1)
         # Surrender EV = 0, no-surrender EV = 3.0 (Ban Ban)
         # Dealer should prefer surrender (0 > -3 from dealer's view)
         assert _dealer_surrender_key(15, True) in tables.dealer_surrender_regrets
 
 
 # ─── TestSolve ─────────────────────────────────────────────────────────────────
+
 
 class TestSolve:
     """solve() output structure and basic invariants."""
@@ -601,9 +602,7 @@ class TestSolve:
             total = sum(probs.values())
             assert abs(total - 1.0) < 1e-9, f"Probs don't sum to 1 at {info_set}"
 
-    def test_dealer_action_strategy_probabilities_sum_to_one(
-        self, result_100: CfrResult
-    ) -> None:
+    def test_dealer_action_strategy_probabilities_sum_to_one(self, result_100: CfrResult) -> None:
         for info_set, probs in result_100.dealer_action_strategy.items():
             total = sum(probs.values())
             assert abs(total - 1.0) < 1e-9, f"Probs don't sum to 1 at {info_set}"
@@ -617,6 +616,7 @@ class TestSolve:
 
 
 # ─── TestStrategyInvariants ────────────────────────────────────────────────────
+
 
 class TestStrategyInvariants:
     """Nash strategy sanity checks after CFR convergence."""
@@ -664,18 +664,18 @@ class TestStrategyInvariants:
             total = sum(probs.values())
             assert abs(total - 1.0) < 1e-9
 
-    def test_dealer_stands_at_18_or_higher_not_in_cfr_table(
-        self, result: CfrResult
-    ) -> None:
+    def test_dealer_stands_at_18_or_higher_not_in_cfr_table(self, result: CfrResult) -> None:
         """DealerActionInfoSet for total >= 18 should not appear in strategy table
         (those are forced stands, no CFR decisions)."""
         for info_set in result.dealer_action_strategy:
-            assert info_set.dealer_total in {16, 17}, (
-                f"Unexpected dealer total in strategy: {info_set}"
-            )
+            assert info_set.dealer_total in {
+                16,
+                17,
+            }, f"Unexpected dealer total in strategy: {info_set}"
 
 
 # ─── TestExploitability ────────────────────────────────────────────────────────
+
 
 class TestExploitability:
     """compute_exploitability, best-response EVs."""
@@ -718,6 +718,7 @@ class TestExploitability:
 
 
 # ─── TestPublicHelpers ──────────────────────────────────────────────────────────
+
 
 class TestPublicHelpers:
     """get_player_action, get_dealer_surrender_prob."""

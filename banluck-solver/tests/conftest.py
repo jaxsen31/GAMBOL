@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from src.engine.cards import str_to_card
-from src.engine.deck import build_deck_from_hands, create_deck
+from src.engine.deck import create_deck
 
 
 def hand(*card_strs: str) -> tuple[int, ...]:

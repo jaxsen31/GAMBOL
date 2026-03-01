@@ -15,12 +15,12 @@ from __future__ import annotations
 # Ace (index 12) is None — always resolved contextually by resolve_ace().
 RANK_VALUES: list[int | None] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, None]
 
-RANK_NAMES: list[str] = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
-SUIT_NAMES: list[str] = ['C', 'D', 'H', 'S']
+RANK_NAMES: list[str] = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
+SUIT_NAMES: list[str] = ["C", "D", "H", "S"]
 
 # Rank index for special ranks
-RANK_ACE: int = 12   # index of Ace in RANK_VALUES / RANK_NAMES
-RANK_TEN: int = 8    # index of 10 in RANK_VALUES
+RANK_ACE: int = 12  # index of Ace in RANK_VALUES / RANK_NAMES
+RANK_TEN: int = 8  # index of 10 in RANK_VALUES
 RANK_JACK: int = 9
 RANK_QUEEN: int = 10
 RANK_KING: int = 11
@@ -112,4 +112,4 @@ def hand_to_str(cards: tuple[int, ...]) -> str:
         >>> hand_to_str((48, 51))
         'AC AS'
     """
-    return ' '.join(card_to_str(c) for c in cards)
+    return " ".join(card_to_str(c) for c in cards)

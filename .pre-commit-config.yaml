@@ -27,3 +27,4 @@ repos:
     hooks:
       - id: bandit
         args: ["-r", "banluck-solver/src/", "-ll", "--skip", "B101,B311"]
+        pass_filenames: false

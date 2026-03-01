@@ -13,7 +13,7 @@ All functions operate on tuples of card integers (Numba-compatible).
 
 from __future__ import annotations
 
-from .cards import RANK_VALUES, RANK_ACE
+from .cards import RANK_ACE, RANK_VALUES
 
 
 def resolve_ace(hand_size: int, current_total: int) -> int:

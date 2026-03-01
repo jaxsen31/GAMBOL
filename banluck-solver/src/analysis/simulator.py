@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Callable
 
 import numpy as np
 
@@ -46,8 +45,8 @@ from src.engine.hand import calculate_total, is_soft
 from src.engine.rules import Outcome, settle_hand
 from src.engine.special_hands import classify_hand, is_ban_ban, is_ban_luck
 
-
 # ─── Result type ──────────────────────────────────────────────────────────────
+
 
 @dataclass
 class SimulationResult:
@@ -66,6 +65,7 @@ class SimulationResult:
         n_losses:      Hands where payout < 0.
         n_pushes:      Hands where payout == 0.
     """
+
     n_hands: int
     mean_ev: float
     std_ev: float
@@ -82,7 +82,7 @@ class SimulationResult:
         edge_sign = "-" if self.house_edge_pct < 0 else "+"
         return (
             f"Hands: {self.n_hands:,} | "
-            f"EV: {sign}{self.mean_ev:.4f} ({sign}{self.mean_ev*100:.2f}%) | "
+            f"EV: {sign}{self.mean_ev:.4f} ({sign}{self.mean_ev * 100:.2f}%) | "
             f"95% CI: [{self.ci_95_low:.4f}, {self.ci_95_high:.4f}] | "
             f"House edge: {edge_sign}{abs(self.house_edge_pct):.2f}% | "
             f"Reveal: {'ON' if self.reveal_mode else 'OFF'}"
@@ -90,6 +90,7 @@ class SimulationResult:
 
 
 # ─── Payout correction ────────────────────────────────────────────────────────
+
 
 def _fix_five_card_bust_payout(result: HandResult) -> float:
     """Correct the 5-card bust payout that the engine hardcodes incorrectly.
@@ -115,6 +116,7 @@ def _fix_five_card_bust_payout(result: HandResult) -> float:
 
 
 # ─── Reveal-mode-ON hand simulation ──────────────────────────────────────────
+
 
 def _simulate_hand_reveal_on(
     deck: np.ndarray,
@@ -158,7 +160,8 @@ def _simulate_hand_reveal_on(
     # Immediate special hand settlement (Ban Ban / Ban Luck never played further)
     if is_ban_ban(player_cards) or is_ban_luck(player_cards):
         outcome, payout = settle_hand(
-            player_cards, dealer_cards,
+            player_cards,
+            dealer_cards,
             dealer_surrendered=False,
             dealer_busted=False,
         )
@@ -194,6 +197,7 @@ def _simulate_hand_reveal_on(
 
 
 # ─── Core simulation loop ─────────────────────────────────────────────────────
+
 
 def simulate_hands(
     player_strategy: PlayerStrategy,
@@ -275,6 +279,7 @@ def simulate_hands(
 
 # ─── Strategy factories ───────────────────────────────────────────────────────
 
+
 def make_fixed_dealer_strategy() -> tuple[DealerSurrenderStrategy, DealerHitStrategy]:
     """Return the fixed Phase 1.1 baseline dealer strategy pair.
 
@@ -316,7 +321,7 @@ def make_dp_player_strategy(reveal_mode: bool = False) -> PlayerStrategy:
     def _strategy(
         player_cards: tuple[int, ...],
         dealer_upcard: int,  # ignored in Banluck
-        deck: np.ndarray,    # ignored by DP strategy
+        deck: np.ndarray,  # ignored by DP strategy
     ) -> PlayerAction:
         total = calculate_total(player_cards)
         nc = len(player_cards)
@@ -350,6 +355,7 @@ def make_simple_player_strategy(stand_threshold: int = 17) -> PlayerStrategy:
     Returns:
         PlayerStrategy callable.
     """
+
     def _strategy(
         player_cards: tuple[int, ...],
         dealer_upcard: int,
@@ -362,6 +368,7 @@ def make_simple_player_strategy(stand_threshold: int = 17) -> PlayerStrategy:
 
 
 # ─── Validation convenience ───────────────────────────────────────────────────
+
 
 def run_validation(
     n_hands: int = 200_000,
@@ -410,7 +417,7 @@ if __name__ == "__main__":
     print(f"reveal_mode=OFF: {results['reveal_off']}")
     print(f"reveal_mode=ON:  {results['reveal_on']}")
     delta = results["reveal_on"].mean_ev - results["reveal_off"].mean_ev
-    print(f"\nEV delta (ON − OFF): {delta:+.4f} ({delta*100:+.2f}%)")
+    print(f"\nEV delta (ON − OFF): {delta:+.4f} ({delta * 100:+.2f}%)")
     print("\nPhase 1.1 DP targets:")
     print("  reveal_mode=OFF → +0.0157 (+1.57%)")
     print("  reveal_mode=ON  → +0.0241 (+2.41%)")

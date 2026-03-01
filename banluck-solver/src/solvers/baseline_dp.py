@@ -12,11 +12,10 @@ enumerating individual cards in the hot path.
 from __future__ import annotations
 
 import functools
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any
 
-from src.engine.cards import RANK_ACE, RANK_SEVEN, TEN_VALUE_RANKS
+from src.engine.cards import RANK_ACE, TEN_VALUE_RANKS
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -36,13 +35,16 @@ NUM_RANKS: int = 13
 
 # ─── Action ───────────────────────────────────────────────────────────────────
 
+
 class Action(Enum):
     """Player or dealer actions available during a hand."""
+
     HIT = "HIT"
     STAND = "STAND"
 
 
 # ─── DealerOutcome ────────────────────────────────────────────────────────────
+
 
 @dataclass
 class DealerOutcome:
@@ -59,6 +61,7 @@ class DealerOutcome:
         init_16_final_dist: Distribution over final totals *after* dealer hits from 16.
         init_17_final_dist: Distribution over final totals *after* dealer hits from soft-17.
     """
+
     final_dist: dict[int, float]
     bust_prob: float
     init_16_prob: float
@@ -69,7 +72,8 @@ class DealerOutcome:
 
 # ─── A2: Composition helpers ──────────────────────────────────────────────────
 
-@functools.lru_cache(maxsize=None)
+
+@functools.cache
 def _total_from_composition(non_ace_total: int, num_aces: int, num_cards: int) -> int:
     """Compute best hand total from the abstract composition representation.
 
@@ -107,7 +111,7 @@ def _total_from_composition(non_ace_total: int, num_aces: int, num_cards: int) -
     return total
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _is_soft_from_composition(non_ace_total: int, num_aces: int, num_cards: int) -> bool:
     """Return True if at least one ace is counted at its high value (soft hand).
 
@@ -167,6 +171,7 @@ def _transition(nat: int, na: int, nc: int, drawn_rank: int) -> tuple[int, int, 
 
 # ─── A4: Dealer outcome distribution ─────────────────────────────────────────
 
+
 def _dealer_play_recursive(
     nat: int,
     na: int,
@@ -197,7 +202,7 @@ def _dealer_play_recursive(
 
     # Terminal: bust
     if total > 21:
-        result: dict = {'bust': 1.0}
+        result: dict = {"bust": 1.0}
         memo[key] = result
         return result
 
@@ -270,7 +275,7 @@ def compute_dealer_distribution(
 
         # Aggregate into global final_dist / bust_prob
         for outcome, prob in sub_dist.items():
-            if outcome == 'bust':
+            if outcome == "bust":
                 bust_prob += RANK_PROB * prob
             else:
                 final_dist[outcome] = final_dist.get(outcome, 0.0) + RANK_PROB * prob
@@ -279,7 +284,7 @@ def compute_dealer_distribution(
         if total2 == 16 and not is_soft2:
             init_16_prob += RANK_PROB
             for outcome, prob in sub_dist.items():
-                if outcome != 'bust':
+                if outcome != "bust":
                     init_16_final_dist[outcome] = (
                         init_16_final_dist.get(outcome, 0.0) + RANK_PROB * prob
                     )
@@ -288,7 +293,7 @@ def compute_dealer_distribution(
         if total2 == 17 and is_soft2:
             init_17_prob += RANK_PROB
             for outcome, prob in sub_dist.items():
-                if outcome != 'bust':
+                if outcome != "bust":
                     init_17_final_dist[outcome] = (
                         init_17_final_dist.get(outcome, 0.0) + RANK_PROB * prob
                     )
@@ -361,12 +366,10 @@ def compute_marginal_dealer_distribution() -> DealerOutcome:
 
     # Re-normalise conditional distributions
     init_16_final_dist: dict[int, float] = (
-        {k: v / init_16_prob for k, v in init_16_weighted.items()}
-        if init_16_prob > 0.0 else {}
+        {k: v / init_16_prob for k, v in init_16_weighted.items()} if init_16_prob > 0.0 else {}
     )
     init_17_final_dist: dict[int, float] = (
-        {k: v / init_17_prob for k, v in init_17_weighted.items()}
-        if init_17_prob > 0.0 else {}
+        {k: v / init_17_prob for k, v in init_17_weighted.items()} if init_17_prob > 0.0 else {}
     )
 
     return DealerOutcome(
@@ -384,15 +387,15 @@ def compute_marginal_dealer_distribution() -> DealerOutcome:
 # Hierarchy ranks for abstract hand types (lower = stronger).
 # Ban Ban / Ban Luck / 777 are pre-settled (A10) and excluded here.
 _ABSTRACT_HIERARCHY: dict[str, int] = {
-    'five_card_21': 4,
-    'five_card_sub21': 5,
-    'regular': 6,
+    "five_card_21": 4,
+    "five_card_sub21": 5,
+    "regular": 6,
 }
 
 _ABSTRACT_PAYOUT: dict[str, int] = {
-    'five_card_21': 3,
-    'five_card_sub21': 2,
-    'regular': 1,
+    "five_card_21": 3,
+    "five_card_sub21": 2,
+    "regular": 1,
 }
 
 
@@ -410,8 +413,8 @@ def _abstract_hand_type(total: int, nc: int) -> str:
         One of: ``'five_card_21'``, ``'five_card_sub21'``, ``'regular'``.
     """
     if nc == 5:
-        return 'five_card_21' if total == 21 else 'five_card_sub21'
-    return 'regular'
+        return "five_card_21" if total == 21 else "five_card_sub21"
+    return "regular"
 
 
 def _settle_ev(
@@ -496,6 +499,7 @@ def _settle_ev(
 
 
 # ─── A7: EV stand ─────────────────────────────────────────────────────────────
+
 
 def _ev_vs_dist(
     player_total: int,
@@ -587,7 +591,8 @@ def _ev_stand(
     if init_16_prob > 0.0:
         init_16_bust_cond = 1.0 - sum(dealer_outcome.init_16_final_dist.values())
         ev_init16_dist = _ev_vs_dist(
-            player_total, nc,
+            player_total,
+            nc,
             dealer_outcome.init_16_final_dist,
             init_16_bust_cond,
         )
@@ -596,7 +601,8 @@ def _ev_stand(
     if init_17_prob > 0.0:
         init_17_bust_cond = 1.0 - sum(dealer_outcome.init_17_final_dist.values())
         ev_init17_dist = _ev_vs_dist(
-            player_total, nc,
+            player_total,
+            nc,
             dealer_outcome.init_17_final_dist,
             init_17_bust_cond,
         )
@@ -606,6 +612,7 @@ def _ev_stand(
 
 
 # ─── A8: EV hit & optimal EV ──────────────────────────────────────────────────
+
 
 def _ev_hit(
     nat: int,
@@ -639,7 +646,7 @@ def _ev_hit(
     Returns:
         EV of hitting from the current state under subsequent optimal play.
     """
-    key = ('hit', nat, na, nc)
+    key = ("hit", nat, na, nc)
     if key in memo:
         return memo[key]
 
@@ -696,7 +703,7 @@ def _optimal_ev(
     Returns:
         ``(ev, action)`` — the EV under optimal play and the corresponding Action.
     """
-    key = ('opt', nat, na, nc)
+    key = ("opt", nat, na, nc)
     if key in memo:
         return memo[key]
 
@@ -816,6 +823,7 @@ def optimal_action(
 
 # ─── A11: Public API ──────────────────────────────────────────────────────────
 
+
 def solve(
     reveal_mode: bool = False,
 ) -> dict[tuple[int, int, int], tuple[Action, float]]:
@@ -854,9 +862,8 @@ def solve(
     table: dict[tuple[int, int, int], tuple[Action, float]] = {}
 
     for nc in range(2, 6):
-        for total in range(2, 22):        # totals 2–21; bust (> 21) excluded
+        for total in range(2, 22):  # totals 2–21; bust (> 21) excluded
             for is_soft_flag in (0, 1):
-
                 # Build a representative composition for (total, nc, is_soft).
                 if is_soft_flag:
                     # Soft: place one ace counted at its high value (11 for 2-card,
@@ -864,7 +871,7 @@ def solve(
                     high = 11 if nc == 2 else 10
                     nat, na = total - high, 1
                     if nat < 0:
-                        continue    # Soft total too low to be reachable at this nc
+                        continue  # Soft total too low to be reachable at this nc
                 else:
                     nat, na = total, 0
 
@@ -917,7 +924,7 @@ def compute_house_edge(
             # nc2 == 2 always; nc1 was conceptually 1 (first card only)
 
             # Classify starting 2-card hand
-            is_ban_ban = (rank_i == RANK_ACE and rank_j == RANK_ACE)
+            is_ban_ban = rank_i == RANK_ACE and rank_j == RANK_ACE
             is_ban_luck = (not is_ban_ban) and (
                 (rank_i == RANK_ACE and rank_j in TEN_VALUE_RANKS)
                 or (rank_j == RANK_ACE and rank_i in TEN_VALUE_RANKS)
@@ -998,14 +1005,11 @@ def compare_reveal_modes() -> dict[tuple[int, int, int], float]:
     """
     table_on = solve(reveal_mode=True)
     table_off = solve(reveal_mode=False)
-    return {
-        k: table_on[k][1] - table_off[k][1]
-        for k in table_on
-        if k in table_off
-    }
+    return {k: table_on[k][1] - table_off[k][1] for k in table_on if k in table_off}
 
 
 # ─── A12 / A13: Strategy chart display ────────────────────────────────────────
+
 
 def build_ev_margin_table(
     reveal_mode: bool = False,
@@ -1084,7 +1088,7 @@ def print_strategy_chart(
         show_ev_margin:  If True, print the EV margin grid below the H/S grid.
     """
     col_w = 6  # width per column (including leading space)
-    header = "".join(f"{'nc='+str(nc):>{col_w}}" for nc in range(2, 6))
+    header = "".join(f"{'nc=' + str(nc):>{col_w}}" for nc in range(2, 6))
     divider = "─" * (12 + col_w * 4)
 
     print(f"\nStrategy Chart: {label}")
@@ -1148,12 +1152,16 @@ if __name__ == "__main__":
     chart_on = {k: v[0] for k, v in table_on.items()}
 
     print_strategy_chart(
-        chart_off, "reveal_mode=OFF  (baseline)",
-        ev_margin_table=margins_off, show_ev_margin=True,
+        chart_off,
+        "reveal_mode=OFF  (baseline)",
+        ev_margin_table=margins_off,
+        show_ev_margin=True,
     )
     print_strategy_chart(
-        chart_on, "reveal_mode=ON   (selective reveal at 16/17)",
-        ev_margin_table=margins_on, show_ev_margin=True,
+        chart_on,
+        "reveal_mode=ON   (selective reveal at 16/17)",
+        ev_margin_table=margins_on,
+        show_ev_margin=True,
     )
 
     he_off = compute_house_edge(table_off)

@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 
 import matplotlib
+
 matplotlib.use("Agg")  # must precede any pyplot import
 
 import matplotlib.figure
@@ -34,6 +35,7 @@ def result() -> CfrResult:
 
 
 # ─── build_dp_heatmap_data ────────────────────────────────────────────────────
+
 
 class TestBuildDpHeatmapData:
     def test_shape(self) -> None:
@@ -69,6 +71,7 @@ class TestBuildDpHeatmapData:
 
 # ─── build_cfr_heatmap_data ───────────────────────────────────────────────────
 
+
 class TestBuildCfrHeatmapData:
     def test_shape(self, result: CfrResult) -> None:
         hard, soft = build_cfr_heatmap_data(result)
@@ -97,6 +100,7 @@ class TestBuildCfrHeatmapData:
 
 # ─── plot_strategy_heatmaps ───────────────────────────────────────────────────
 
+
 class TestPlotStrategyHeatmaps:
     def test_returns_figure_binary(self) -> None:
         hard, soft = build_dp_heatmap_data()
@@ -107,6 +111,7 @@ class TestPlotStrategyHeatmaps:
 
     def test_binary_has_two_subplot_axes(self) -> None:
         import matplotlib.pyplot as plt_
+
         hard, soft = build_dp_heatmap_data()
         fig = plot_strategy_heatmaps(hard, soft, "Test axes", binary=True, show=False)
         subplot_axes = [ax for ax in fig.axes if hasattr(ax, "get_subplotspec")]
@@ -115,13 +120,15 @@ class TestPlotStrategyHeatmaps:
 
     def test_returns_figure_continuous(self) -> None:
         import matplotlib.pyplot as plt_
+
         hard, soft = build_dp_heatmap_data()
         fig = plot_strategy_heatmaps(hard, soft, "Test continuous", binary=False, show=False)
         assert isinstance(fig, matplotlib.figure.Figure)
         plt_.close(fig)
 
-    def test_save_path(self, tmp_path: "pytest.TempPathFactory") -> None:
+    def test_save_path(self, tmp_path: pytest.TempPathFactory) -> None:
         import matplotlib.pyplot as plt_
+
         hard, soft = build_dp_heatmap_data()
         path = str(tmp_path / "heatmap.png")
         fig = plot_strategy_heatmaps(hard, soft, "Save test", show=False, save_path=path)
@@ -132,15 +139,18 @@ class TestPlotStrategyHeatmaps:
 
 # ─── plot_dp_strategy_heatmaps ───────────────────────────────────────────────
 
+
 class TestPlotDpStrategyHeatmaps:
     def test_reveal_off_returns_figure(self) -> None:
         import matplotlib.pyplot as plt_
+
         fig = plot_dp_strategy_heatmaps(reveal_mode=False, show=False)
         assert isinstance(fig, matplotlib.figure.Figure)
         plt_.close(fig)
 
     def test_reveal_on_returns_figure(self) -> None:
         import matplotlib.pyplot as plt_
+
         fig = plot_dp_strategy_heatmaps(reveal_mode=True, show=False)
         assert isinstance(fig, matplotlib.figure.Figure)
         plt_.close(fig)
@@ -148,9 +158,11 @@ class TestPlotDpStrategyHeatmaps:
 
 # ─── plot_cfr_strategy_heatmaps ──────────────────────────────────────────────
 
+
 class TestPlotCfrStrategyHeatmaps:
     def test_returns_figure(self, result: CfrResult) -> None:
         import matplotlib.pyplot as plt_
+
         fig = plot_cfr_strategy_heatmaps(result, show=False)
         assert isinstance(fig, matplotlib.figure.Figure)
         plt_.close(fig)
@@ -158,22 +170,26 @@ class TestPlotCfrStrategyHeatmaps:
 
 # ─── plot_strategy_comparison ────────────────────────────────────────────────
 
+
 class TestPlotStrategyComparison:
     def test_returns_figure(self, result: CfrResult) -> None:
         import matplotlib.pyplot as plt_
+
         fig = plot_strategy_comparison(result, show=False)
         assert isinstance(fig, matplotlib.figure.Figure)
         plt_.close(fig)
 
     def test_has_six_subplot_axes(self, result: CfrResult) -> None:
         import matplotlib.pyplot as plt_
+
         fig = plot_strategy_comparison(result, show=False)
         subplot_axes = [ax for ax in fig.axes if hasattr(ax, "get_subplotspec")]
         assert len(subplot_axes) >= 6, f"Expected ≥6 subplot axes, got {len(subplot_axes)}"
         plt_.close(fig)
 
-    def test_save_path(self, result: CfrResult, tmp_path: "pytest.TempPathFactory") -> None:
+    def test_save_path(self, result: CfrResult, tmp_path: pytest.TempPathFactory) -> None:
         import matplotlib.pyplot as plt_
+
         path = str(tmp_path / "comparison.png")
         fig = plot_strategy_comparison(result, show=False, save_path=path)
         assert os.path.exists(path), "Comparison file not created"

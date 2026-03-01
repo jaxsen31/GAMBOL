@@ -29,7 +29,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from src.engine.game_state import PlayerAction
-from src.solvers.baseline_dp import Action, solve as dp_solve
+from src.solvers.baseline_dp import Action
+from src.solvers.baseline_dp import solve as dp_solve
 from src.solvers.cfr import CfrResult
 
 # ─── Constants ────────────────────────────────────────────────────────────────
@@ -42,6 +43,7 @@ _NAN_COLOR: str = "#cccccc"
 
 
 # ─── Colormaps ────────────────────────────────────────────────────────────────
+
 
 def _make_binary_cmap() -> matplotlib.colors.ListedColormap:
     """Red=STAND (0), Green=HIT (1), grey=absent (NaN)."""
@@ -62,6 +64,7 @@ _CONTINUOUS_CMAP: matplotlib.colors.Colormap = _make_continuous_cmap()
 
 
 # ─── Data builders ────────────────────────────────────────────────────────────
+
 
 def build_dp_heatmap_data(reveal_mode: bool = False) -> tuple[np.ndarray, np.ndarray]:
     """Return (hard_matrix, soft_matrix) from the DP solver.
@@ -131,11 +134,12 @@ def build_cfr_heatmap_data(result: CfrResult) -> tuple[np.ndarray, np.ndarray]:
 
 # ─── Rendering helper ─────────────────────────────────────────────────────────
 
+
 def _render_panel(
-    ax: "matplotlib.axes.Axes",
+    ax: matplotlib.axes.Axes,
     data: np.ndarray,
     binary: bool,
-) -> "matplotlib.image.AxesImage":
+) -> matplotlib.image.AxesImage:
     """Render one heat-map panel onto *ax* and return the AxesImage.
 
     Sets axis ticks, tick labels, and cell annotations.  The caller is
@@ -162,15 +166,21 @@ def _render_panel(
                 text = f"{val:.2f}"
                 text_color = "black" if 0.25 < val < 0.75 else "white"
             ax.text(
-                c, r, text,
-                ha="center", va="center",
-                fontsize=9, color=text_color, fontweight="bold",
+                c,
+                r,
+                text,
+                ha="center",
+                va="center",
+                fontsize=9,
+                color=text_color,
+                fontweight="bold",
             )
 
     return im
 
 
 # ─── Public plot functions ────────────────────────────────────────────────────
+
 
 def plot_strategy_heatmaps(
     hard_data: np.ndarray,
@@ -243,9 +253,12 @@ def plot_dp_strategy_heatmaps(
     hard, soft = build_dp_heatmap_data(reveal_mode=reveal_mode)
     mode_label = "reveal=ON" if reveal_mode else "reveal=OFF"
     return plot_strategy_heatmaps(
-        hard, soft,
+        hard,
+        soft,
         f"DP Solver Strategy  ({mode_label})",
-        binary=True, show=show, save_path=save_path,
+        binary=True,
+        show=show,
+        save_path=save_path,
     )
 
 
@@ -267,9 +280,12 @@ def plot_cfr_strategy_heatmaps(
     """
     hard, soft = build_cfr_heatmap_data(result)
     return plot_strategy_heatmaps(
-        hard, soft,
+        hard,
+        soft,
         "CFR Nash Strategy  (P(HIT) by hand state)",
-        binary=False, show=show, save_path=save_path,
+        binary=False,
+        show=show,
+        save_path=save_path,
     )
 
 
@@ -355,6 +371,4 @@ if __name__ == "__main__":
     plot_dp_strategy_heatmaps(reveal_mode=True, show=False, save_path="dp_reveal_on.png")
     plot_cfr_strategy_heatmaps(result, show=False, save_path="cfr_strategy.png")
     plot_strategy_comparison(result, show=False, save_path="strategy_comparison.png")
-    print(
-        "Saved: dp_reveal_off.png, dp_reveal_on.png, cfr_strategy.png, strategy_comparison.png"
-    )
+    print("Saved: dp_reveal_off.png, dp_reveal_on.png, cfr_strategy.png, strategy_comparison.png")

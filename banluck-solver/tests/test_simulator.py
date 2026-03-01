@@ -14,12 +14,8 @@ from __future__ import annotations
 
 import math
 
-import numpy as np
 import pytest
 
-from src.engine.cards import str_to_card
-from src.engine.deck import build_deck_from_hands, create_deck
-from src.engine.game_state import PlayerAction
 from src.analysis.simulator import (
     SimulationResult,
     _fix_five_card_bust_payout,
@@ -29,6 +25,9 @@ from src.analysis.simulator import (
     run_validation,
     simulate_hands,
 )
+from src.engine.cards import str_to_card
+from src.engine.deck import create_deck
+from src.engine.game_state import PlayerAction
 
 
 def hand(*card_strs: str) -> tuple[int, ...]:
@@ -37,16 +36,21 @@ def hand(*card_strs: str) -> tuple[int, ...]:
 
 # ─── TestSimulationResult ─────────────────────────────────────────────────────
 
-class TestSimulationResult:
 
+class TestSimulationResult:
     def test_fields_exist(self):
         """All specified fields must be present."""
         result = SimulationResult(
-            n_hands=1000, mean_ev=0.01, std_ev=1.1,
-            ci_95_low=-0.05, ci_95_high=0.07,
+            n_hands=1000,
+            mean_ev=0.01,
+            std_ev=1.1,
+            ci_95_low=-0.05,
+            ci_95_high=0.07,
             house_edge_pct=-1.0,
             reveal_mode=False,
-            n_wins=400, n_losses=500, n_pushes=100,
+            n_wins=400,
+            n_losses=500,
+            n_pushes=100,
         )
         assert result.n_hands == 1000
         assert result.mean_ev == 0.01
@@ -56,45 +60,66 @@ class TestSimulationResult:
     def test_house_edge_pct_formula(self):
         """house_edge_pct must equal -mean_ev * 100."""
         r = SimulationResult(
-            n_hands=100, mean_ev=0.025, std_ev=1.0,
-            ci_95_low=0.0, ci_95_high=0.05,
+            n_hands=100,
+            mean_ev=0.025,
+            std_ev=1.0,
+            ci_95_low=0.0,
+            ci_95_high=0.05,
             house_edge_pct=-0.025 * 100,
             reveal_mode=False,
-            n_wins=55, n_losses=40, n_pushes=5,
+            n_wins=55,
+            n_losses=40,
+            n_pushes=5,
         )
         assert math.isclose(r.house_edge_pct, -r.mean_ev * 100, rel_tol=1e-9)
 
     def test_counts_sum_to_n_hands(self):
         """n_wins + n_losses + n_pushes must equal n_hands."""
         r = SimulationResult(
-            n_hands=1000, mean_ev=0.0, std_ev=1.0,
-            ci_95_low=-0.05, ci_95_high=0.05,
-            house_edge_pct=0.0, reveal_mode=True,
-            n_wins=450, n_losses=450, n_pushes=100,
+            n_hands=1000,
+            mean_ev=0.0,
+            std_ev=1.0,
+            ci_95_low=-0.05,
+            ci_95_high=0.05,
+            house_edge_pct=0.0,
+            reveal_mode=True,
+            n_wins=450,
+            n_losses=450,
+            n_pushes=100,
         )
         assert r.n_wins + r.n_losses + r.n_pushes == r.n_hands
 
     def test_reveal_mode_stored(self):
         """reveal_mode field must be stored correctly."""
         r_on = SimulationResult(
-            n_hands=10, mean_ev=0.0, std_ev=1.0,
-            ci_95_low=-0.5, ci_95_high=0.5,
-            house_edge_pct=0.0, reveal_mode=True,
-            n_wins=5, n_losses=4, n_pushes=1,
+            n_hands=10,
+            mean_ev=0.0,
+            std_ev=1.0,
+            ci_95_low=-0.5,
+            ci_95_high=0.5,
+            house_edge_pct=0.0,
+            reveal_mode=True,
+            n_wins=5,
+            n_losses=4,
+            n_pushes=1,
         )
         assert r_on.reveal_mode is True
 
 
 # ─── TestSimulateHandsBasic ───────────────────────────────────────────────────
 
-class TestSimulateHandsBasic:
 
+class TestSimulateHandsBasic:
     @pytest.fixture(scope="class")
     def small_run(self):
         s, h = make_fixed_dealer_strategy()
         return simulate_hands(
-            make_simple_player_strategy(17), s, h,
-            n_hands=5_000, seed=42, reveal_mode=False,
+            make_simple_player_strategy(17),
+            s,
+            h,
+            n_hands=5_000,
+            seed=42,
+            reveal_mode=False,
         )
 
     def test_n_hands_matches(self, small_run):
@@ -103,11 +128,14 @@ class TestSimulateHandsBasic:
     def test_seed_reproducibility(self):
         """Same seed must produce identical results."""
         s, h = make_fixed_dealer_strategy()
-        kw = dict(
-            player_strategy=make_simple_player_strategy(17),
-            dealer_surrender_strategy=s, dealer_hit_strategy=h,
-            n_hands=2_000, seed=99, reveal_mode=False,
-        )
+        kw = {
+            "player_strategy": make_simple_player_strategy(17),
+            "dealer_surrender_strategy": s,
+            "dealer_hit_strategy": h,
+            "n_hands": 2_000,
+            "seed": 99,
+            "reveal_mode": False,
+        }
         r1 = simulate_hands(**kw)
         r2 = simulate_hands(**kw)
         assert r1.mean_ev == r2.mean_ev
@@ -143,16 +171,20 @@ class TestSimulateHandsBasic:
     def test_reveal_mode_true_stored(self):
         s, h = make_fixed_dealer_strategy()
         r = simulate_hands(
-            make_simple_player_strategy(17), s, h,
-            n_hands=1_000, seed=42, reveal_mode=True,
+            make_simple_player_strategy(17),
+            s,
+            h,
+            n_hands=1_000,
+            seed=42,
+            reveal_mode=True,
         )
         assert r.reveal_mode is True
 
 
 # ─── TestFixedDealerStrategy ──────────────────────────────────────────────────
 
-class TestFixedDealerStrategy:
 
+class TestFixedDealerStrategy:
     def test_returns_two_callables(self):
         result = make_fixed_dealer_strategy()
         assert len(result) == 2
@@ -163,35 +195,35 @@ class TestFixedDealerStrategy:
     def test_never_surrenders_on_hard_15(self):
         """Phase 1.1 baseline dealer never surrenders."""
         surrender_strat, _ = make_fixed_dealer_strategy()
-        hard_15 = hand('7C', '8D')
+        hard_15 = hand("7C", "8D")
         assert surrender_strat(hard_15) is False
 
     def test_hit_below_16(self):
         """Forced hit when total < 16."""
         _, hit_strat = make_fixed_dealer_strategy()
         deck = create_deck()
-        low_hand = hand('5C', '8D')   # total = 13
+        low_hand = hand("5C", "8D")  # total = 13
         assert hit_strat(low_hand, deck) is True
 
     def test_stand_on_hard_17(self):
         """Stand on hard 17."""
         _, hit_strat = make_fixed_dealer_strategy()
         deck = create_deck()
-        hard_17 = hand('9C', '8D')
+        hard_17 = hand("9C", "8D")
         assert hit_strat(hard_17, deck) is False
 
     def test_hit_on_soft_17(self):
         """Hit on soft 17 (A+6 two-card hand)."""
         _, hit_strat = make_fixed_dealer_strategy()
         deck = create_deck()
-        soft_17 = hand('AS', '6C')
+        soft_17 = hand("AS", "6C")
         assert hit_strat(soft_17, deck) is True
 
 
 # ─── TestDpPlayerStrategy ─────────────────────────────────────────────────────
 
-class TestDpPlayerStrategy:
 
+class TestDpPlayerStrategy:
     def test_returns_callable(self):
         strat = make_dp_player_strategy(reveal_mode=False)
         assert callable(strat)
@@ -199,7 +231,7 @@ class TestDpPlayerStrategy:
     def test_callable_signature(self):
         """Strategy must accept (player_cards, dealer_upcard, deck)."""
         strat = make_dp_player_strategy(reveal_mode=False)
-        cards = hand('9C', '8D')
+        cards = hand("9C", "8D")
         deck = create_deck()
         upcard = 20  # arbitrary card int
         action = strat(cards, upcard, deck)
@@ -209,7 +241,7 @@ class TestDpPlayerStrategy:
         """Always stand on 21."""
         strat = make_dp_player_strategy(reveal_mode=False)
         deck = create_deck()
-        cards = hand('AS', 'KC')  # Ban Luck (21)
+        cards = hand("AS", "KC")  # Ban Luck (21)
         action = strat(cards, 20, deck)
         assert action == PlayerAction.STAND
 
@@ -217,7 +249,7 @@ class TestDpPlayerStrategy:
         """Always stand at 5 cards (max hand)."""
         strat = make_dp_player_strategy(reveal_mode=False)
         deck = create_deck()
-        cards = hand('2C', '3D', '4H', '5S', '6C')  # 5 cards, total=20
+        cards = hand("2C", "3D", "4H", "5S", "6C")  # 5 cards, total=20
         action = strat(cards, 20, deck)
         assert action == PlayerAction.STAND
 
@@ -225,12 +257,13 @@ class TestDpPlayerStrategy:
         """DP should always hit on a low total like 8."""
         strat = make_dp_player_strategy(reveal_mode=False)
         deck = create_deck()
-        cards = hand('3C', '5D')  # 8
+        cards = hand("3C", "5D")  # 8
         action = strat(cards, 20, deck)
         assert action == PlayerAction.HIT
 
 
 # ─── TestEvValidation ────────────────────────────────────────────────────────
+
 
 class TestEvValidation:
     """
@@ -292,9 +325,7 @@ class TestEvValidation:
     def test_dp_beats_simple_strategy(self):
         """DP optimal strategy should outperform simple stand-at-17 strategy."""
         s, h = make_fixed_dealer_strategy()
-        dp_result = simulate_hands(
-            make_dp_player_strategy(False), s, h, n_hands=50_000, seed=77
-        )
+        dp_result = simulate_hands(make_dp_player_strategy(False), s, h, n_hands=50_000, seed=77)
         simple_result = simulate_hands(
             make_simple_player_strategy(17), s, h, n_hands=50_000, seed=77
         )
@@ -308,20 +339,21 @@ class TestEvValidation:
 
 # ─── TestFiveCardBustPayout ───────────────────────────────────────────────────
 
-class TestFiveCardBustPayout:
 
+class TestFiveCardBustPayout:
     def test_fix_5card_bust_returns_minus2(self):
         """5-card bust payout should be corrected from -1.0 to -2.0."""
         from src.engine.game_state import HandResult
         from src.engine.rules import Outcome
+
         # Construct a HandResult that looks like a 5-card bust from play_hand
         h = HandResult(
-            player_cards=hand('2C', '3D', '4H', '5S', 'KC'),  # 2+3+4+5+10=24 — bust
-            dealer_cards=hand('9C', '8D'),
+            player_cards=hand("2C", "3D", "4H", "5S", "KC"),  # 2+3+4+5+10=24 — bust
+            dealer_cards=hand("9C", "8D"),
             outcome=Outcome.LOSS,
             payout=-1.0,  # the incorrect value play_hand would return
-            player_hand_type='bust',
-            dealer_hand_type='regular',
+            player_hand_type="bust",
+            dealer_hand_type="regular",
             dealer_surrendered=False,
             dealer_busted=False,
         )
@@ -331,13 +363,14 @@ class TestFiveCardBustPayout:
         """4-card bust should remain -1.0."""
         from src.engine.game_state import HandResult
         from src.engine.rules import Outcome
+
         h = HandResult(
-            player_cards=hand('9C', '9D', '9H', '5S'),  # 9+9+9+5=32 — bust, 4 cards
-            dealer_cards=hand('9C', '8D'),
+            player_cards=hand("9C", "9D", "9H", "5S"),  # 9+9+9+5=32 — bust, 4 cards
+            dealer_cards=hand("9C", "8D"),
             outcome=Outcome.LOSS,
             payout=-1.0,
-            player_hand_type='bust',
-            dealer_hand_type='regular',
+            player_hand_type="bust",
+            dealer_hand_type="regular",
             dealer_surrendered=False,
             dealer_busted=False,
         )
@@ -347,13 +380,14 @@ class TestFiveCardBustPayout:
         """5-card non-bust (five_card_sub21) should remain at its payout."""
         from src.engine.game_state import HandResult
         from src.engine.rules import Outcome
+
         h = HandResult(
-            player_cards=hand('2C', '3D', '4H', '5S', '6C'),  # 2+3+4+5+6=20 — five-card bonus
-            dealer_cards=hand('9C', '8D'),
+            player_cards=hand("2C", "3D", "4H", "5S", "6C"),  # 2+3+4+5+6=20 — five-card bonus
+            dealer_cards=hand("9C", "8D"),
             outcome=Outcome.WIN,
             payout=2.0,  # five_card_sub21 bonus
-            player_hand_type='five_card_sub21',
-            dealer_hand_type='regular',
+            player_hand_type="five_card_sub21",
+            dealer_hand_type="regular",
             dealer_surrendered=False,
             dealer_busted=False,
         )
@@ -363,14 +397,15 @@ class TestFiveCardBustPayout:
         """5-card hand standing on ≤15 (forfeit) should remain -1.0 (not -2.0)."""
         from src.engine.game_state import HandResult
         from src.engine.rules import Outcome
+
         # Player with 5 cards totaling 13 — they stood (forfeited), payout=-1.0
         h = HandResult(
-            player_cards=hand('2C', '2D', '3H', '3S', '3C'),  # 2+2+3+3+3=13 — forfeit
-            dealer_cards=hand('9C', '8D'),
+            player_cards=hand("2C", "2D", "3H", "3S", "3C"),  # 2+2+3+3+3=13 — forfeit
+            dealer_cards=hand("9C", "8D"),
             outcome=Outcome.LOSS,
             payout=-1.0,
-            player_hand_type='regular',
-            dealer_hand_type='regular',
+            player_hand_type="regular",
+            dealer_hand_type="regular",
             dealer_surrendered=False,
             dealer_busted=False,
         )
@@ -381,8 +416,11 @@ class TestFiveCardBustPayout:
         """Stand-at-21-only strategy (never stand until forced) → very negative EV."""
         s, h = make_fixed_dealer_strategy()
         r = simulate_hands(
-            make_simple_player_strategy(21), s, h,  # stand only at 21 — bust a lot
-            n_hands=10_000, seed=42
+            make_simple_player_strategy(21),
+            s,
+            h,  # stand only at 21 — bust a lot
+            n_hands=10_000,
+            seed=42,
         )
         assert r.mean_ev < -0.1  # deeply negative
 
@@ -400,9 +438,6 @@ class TestFiveCardBustPayout:
     def test_small_run_ci_contains_dp_target(self):
         """Even a 50k-hand run's CI should plausibly contain the DP target."""
         s, h = make_fixed_dealer_strategy()
-        r = simulate_hands(
-            make_dp_player_strategy(False), s, h,
-            n_hands=50_000, seed=42
-        )
+        r = simulate_hands(make_dp_player_strategy(False), s, h, n_hands=50_000, seed=42)
         # Check the range is sane — mean should be in the ballpark of +1.57%
         assert -0.05 < r.mean_ev < 0.10

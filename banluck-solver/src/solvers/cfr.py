@@ -53,6 +53,7 @@ import numpy as np
 
 try:
     import numba
+
     _NUMBA_AVAILABLE: bool = True
 except ImportError:
     _NUMBA_AVAILABLE = False
@@ -61,7 +62,6 @@ from src.engine.game_state import DealerAction, PlayerAction
 from src.solvers.baseline_dp import (
     NUM_RANKS,
     RANK_PROB,
-    RANK_VALUES_SOLVER,
     _is_soft_from_composition,
     _total_from_composition,
     _transition,
@@ -90,6 +90,7 @@ DealerActionStrategyDict = dict[DealerActionInfoSet, dict[DealerAction, float]]
 
 # ─── Result type ───────────────────────────────────────────────────────────────
 
+
 @dataclass
 class CfrResult:
     """Output of the CFR+ solver.
@@ -108,6 +109,7 @@ class CfrResult:
         nash_ev:                   Expected player EV under average strategies,
                                    averaged over all initial deal compositions.
     """
+
     player_strategy: PlayerStrategyDict
     dealer_surrender_strategy: DealerSurrenderStrategyDict
     dealer_action_strategy: DealerActionStrategyDict
@@ -119,6 +121,7 @@ class CfrResult:
 
 # ─── CFR+ internal accumulators ────────────────────────────────────────────────
 
+
 @dataclass
 class _CfrTables:
     """Mutable CFR+ state: regret and strategy-sum accumulators.
@@ -128,6 +131,7 @@ class _CfrTables:
 
     Both are updated in-place during each CFR+ iteration.
     """
+
     player_regrets: dict[PlayerHitStandInfoSet, dict[PlayerAction, float]] = field(
         default_factory=dict
     )
@@ -164,6 +168,7 @@ class _NumbaTables:
         act_regrets:          float64[n_act_slots, 3]     — HIT / STAND / REVEAL.
         act_strategy_sums:    float64[n_act_slots, 3].
     """
+
     player_regrets: np.ndarray
     player_strategy_sums: np.ndarray
     surr_regrets: np.ndarray
@@ -182,11 +187,11 @@ _P_STAND: int = 1
 # Dealer action indices (at 16/17 strategic nodes)
 _D_HIT: int = 0
 _D_STAND: int = 1
-_D_REVEAL: int = 2   # REVEAL_PLAYER
+_D_REVEAL: int = 2  # REVEAL_PLAYER
 
 # Dealer surrender action indices
 _D_SURRENDER: int = 0
-_D_CONTINUE: int = 1   # DealerAction.HIT used as "no-surrender" sentinel
+_D_CONTINUE: int = 1  # DealerAction.HIT used as "no-surrender" sentinel
 
 # Reverse mappings (int → Enum) used only in _extract_*_avg_strategy at end of solve()
 _INT_TO_PLAYER_ACTION: dict[int, PlayerAction] = {
@@ -223,6 +228,7 @@ def _dealer_action_key(
 
 # ─── Regret matching + ─────────────────────────────────────────────────────────
 
+
 def _get_strategy(
     info_set: NamedTuple,
     regret_table: dict,
@@ -246,8 +252,8 @@ def _get_strategy(
     total = sum(pos)
     if total <= 0.0:
         p = 1.0 / len(legal_actions)
-        return {a: p for a in legal_actions}
-    return {a: r / total for a, r in zip(legal_actions, pos)}
+        return dict.fromkeys(legal_actions, p)
+    return {a: r / total for a, r in zip(legal_actions, pos, strict=True)}
 
 
 def _update_strategy_sum(
@@ -337,6 +343,7 @@ def _regret_update_dealer(
 
 # ─── Composition helpers ───────────────────────────────────────────────────────
 
+
 def _is_hard_fifteen_comp(nat: int, na: int, nc: int) -> bool:
     """True if composition is a qualifying hard-15 hand.
 
@@ -376,9 +383,14 @@ def _is_dealer_ban_luck(d_nat: int, d_na: int, d_nc: int) -> bool:
 
 # ─── Settlement ────────────────────────────────────────────────────────────────
 
+
 def _cfr_settle(
-    p_nat: int, p_na: int, p_nc: int,
-    d_nat: int, d_na: int, d_nc: int,
+    p_nat: int,
+    p_na: int,
+    p_nc: int,
+    d_nat: int,
+    d_na: int,
+    d_nc: int,
     d_busted: bool,
 ) -> float:
     """Settlement EV from the player's perspective, using full compositions.
@@ -474,8 +486,8 @@ def _settle_player_ban_ban(d_nat: int, d_na: int, d_nc: int) -> float:
         EV from player's perspective (+3.0 win, 0.0 push).
     """
     if _is_dealer_ban_ban(d_nat, d_na, d_nc):
-        return 0.0   # Ban Ban vs Ban Ban → push
-    return 3.0       # Ban Ban beats everything else → +3 units
+        return 0.0  # Ban Ban vs Ban Ban → push
+    return 3.0  # Ban Ban beats everything else → +3 units
 
 
 def _settle_player_ban_luck(d_nat: int, d_na: int, d_nc: int) -> float:
@@ -493,11 +505,12 @@ def _settle_player_ban_luck(d_nat: int, d_na: int, d_nc: int) -> float:
     if _is_dealer_ban_ban(d_nat, d_na, d_nc):
         return -3.0  # Ban Luck vs Ban Ban → player loses at 3:1
     if _is_dealer_ban_luck(d_nat, d_na, d_nc):
-        return 0.0   # Ban Luck vs Ban Luck → push
-    return 2.0       # Ban Luck beats all others → +2 units
+        return 0.0  # Ban Luck vs Ban Luck → push
+    return 2.0  # Ban Luck beats all others → +2 units
 
 
 # ─── Forced-hit distribution cache ────────────────────────────────────────────
+
 
 def _compute_forced_hit_dist(
     d_nat: int,
@@ -561,6 +574,7 @@ def _forced_hit_dist(d_nat: int, d_na: int, d_nc: int) -> dict[Comp, float]:
 
 # ─── Initial deal enumeration ──────────────────────────────────────────────────
 
+
 def _build_initial_deals() -> list[tuple[Comp, Comp, float]]:
     """Enumerate all initial 2-card composition pairs with probabilities.
 
@@ -587,11 +601,12 @@ def _build_initial_deals() -> list[tuple[Comp, Comp, float]]:
                 for dr2 in range(NUM_RANKS):
                     d_comp = _transition(*d1, dr2)
                     key = (p_comp, d_comp)
-                    deals[key] = deals.get(key, 0.0) + (RANK_PROB ** 4)
+                    deals[key] = deals.get(key, 0.0) + (RANK_PROB**4)
     return [(p, d, w) for (p, d), w in deals.items()]
 
 
 # ─── Average strategy extraction ───────────────────────────────────────────────
+
 
 def _extract_avg_strategy(
     sums_table: dict,
@@ -612,7 +627,7 @@ def _extract_avg_strategy(
         total = sum(action_sums.get(a, 0.0) for a in legal)
         if total <= 0.0:
             p = 1.0 / len(legal)
-            result[info_set] = {a: p for a in legal}
+            result[info_set] = dict.fromkeys(legal, p)
         else:
             result[info_set] = {a: action_sums.get(a, 0.0) / total for a in legal}
     return result
@@ -631,10 +646,10 @@ def _extract_avg_strategy(
 # expected speedup is ~8–30×, bringing per-pass time from 2.65 s to < 0.1 s.
 
 # Node-type constants
-_NT_PLAYER: int = 0       # player hit/stand decision
+_NT_PLAYER: int = 0  # player hit/stand decision
 _NT_DEALER_SURR: int = 1  # dealer hard-15 surrender decision
-_NT_DEALER_ACT: int = 2   # dealer action at strategic total (16 or 17)
-_NT_TERMINAL: int = 3     # terminal node (fixed EV, no decisions)
+_NT_DEALER_ACT: int = 2  # dealer action at strategic total (16 or 17)
+_NT_TERMINAL: int = 3  # terminal node (fixed EV, no decisions)
 
 
 @dataclass
@@ -655,6 +670,7 @@ class _TreeNode:
                        into reach_p / reach_d.
         terminal_ev:   Fixed EV for _NT_TERMINAL nodes; 0.0 otherwise.
     """
+
     idx: int
     node_type: int
     p_nat: int
@@ -665,7 +681,7 @@ class _TreeNode:
     d_nc: int
     info_set_key: tuple
     legal_actions: list
-    transitions: dict   # int -> list[(int, float)]
+    transitions: dict  # int -> list[(int, float)]
     terminal_ev: float
 
 
@@ -699,7 +715,7 @@ def _build_game_tree() -> tuple[list[_TreeNode], list]:
     from collections import deque
 
     nodes: list[_TreeNode] = []
-    node_map: dict = {}       # (p_nat,p_na,p_nc, d_nat,d_na,d_nc, nt) -> idx
+    node_map: dict = {}  # (p_nat,p_na,p_nc, d_nat,d_na,d_nc, nt) -> idx
     terminal_ev_map: dict[float, int] = {}  # ev -> idx
     queue: deque = deque()
 
@@ -707,19 +723,29 @@ def _build_game_tree() -> tuple[list[_TreeNode], list]:
     def _get_terminal(ev: float) -> int:
         if ev not in terminal_ev_map:
             idx = len(nodes)
-            nodes.append(_TreeNode(
-                idx=idx, node_type=_NT_TERMINAL,
-                p_nat=0, p_na=0, p_nc=0, d_nat=0, d_na=0, d_nc=0,
-                info_set_key=(), legal_actions=[], transitions={},
-                terminal_ev=ev,
-            ))
+            nodes.append(
+                _TreeNode(
+                    idx=idx,
+                    node_type=_NT_TERMINAL,
+                    p_nat=0,
+                    p_na=0,
+                    p_nc=0,
+                    d_nat=0,
+                    d_na=0,
+                    d_nc=0,
+                    info_set_key=(),
+                    legal_actions=[],
+                    transitions={},
+                    terminal_ev=ev,
+                )
+            )
             terminal_ev_map[ev] = idx
         return terminal_ev_map[ev]
 
     # ── Generic decision-node factory ───────────────────────────────────────
-    def _get_or_create(nt: int,
-                       p_nat: int, p_na: int, p_nc: int,
-                       d_nat: int, d_na: int, d_nc: int) -> int:
+    def _get_or_create(
+        nt: int, p_nat: int, p_na: int, p_nc: int, d_nat: int, d_na: int, d_nc: int
+    ) -> int:
         key = (p_nat, p_na, p_nc, d_nat, d_na, d_nc, nt)
         if key in node_map:
             return node_map[key]
@@ -739,10 +765,17 @@ def _build_game_tree() -> tuple[list[_TreeNode], list]:
             info_key = _dealer_action_key(d_total, d_nc, d_soft, p_nc)
             legal = [_D_HIT, _D_STAND] if p_nc < 3 else [_D_HIT, _D_STAND, _D_REVEAL]
         node = _TreeNode(
-            idx=idx, node_type=nt,
-            p_nat=p_nat, p_na=p_na, p_nc=p_nc,
-            d_nat=d_nat, d_na=d_na, d_nc=d_nc,
-            info_set_key=info_key, legal_actions=legal, transitions={},
+            idx=idx,
+            node_type=nt,
+            p_nat=p_nat,
+            p_na=p_na,
+            p_nc=p_nc,
+            d_nat=d_nat,
+            d_na=d_na,
+            d_nc=d_nc,
+            info_set_key=info_key,
+            legal_actions=legal,
+            transitions={},
             terminal_ev=0.0,
         )
         nodes.append(node)
@@ -753,8 +786,9 @@ def _build_game_tree() -> tuple[list[_TreeNode], list]:
     # ── Dealer-phase transition helper ──────────────────────────────────────
     # Expands "player is done, dealer has comp (d_nat,d_na,d_nc)" into a list
     # of (child_idx, prob) via _forced_hit_dist.
-    def _dealer_phase_trans(p_nat: int, p_na: int, p_nc: int,
-                            d_nat: int, d_na: int, d_nc: int) -> list:
+    def _dealer_phase_trans(
+        p_nat: int, p_na: int, p_nc: int, d_nat: int, d_na: int, d_nc: int
+    ) -> list:
         result = []
         for (nd_nat, nd_na, nd_nc), prob in _forced_hit_dist(d_nat, d_na, d_nc).items():
             nd_total = _total_from_composition(nd_nat, nd_na, nd_nc)
@@ -765,16 +799,14 @@ def _build_game_tree() -> tuple[list[_TreeNode], list]:
                 ev = _cfr_settle(p_nat, p_na, p_nc, nd_nat, nd_na, nd_nc, d_busted=False)
                 result.append((_get_terminal(ev), prob))
             else:
-                child = _get_or_create(_NT_DEALER_ACT, p_nat, p_na, p_nc,
-                                       nd_nat, nd_na, nd_nc)
+                child = _get_or_create(_NT_DEALER_ACT, p_nat, p_na, p_nc, nd_nat, nd_na, nd_nc)
                 result.append((child, prob))
         return result
 
     # ── After-surrender entry resolver ──────────────────────────────────────
     # Returns (node_idx_or_None, immediate_ev).
     # node_idx_or_None = None → immediate terminal with EV = immediate_ev.
-    def _after_surr_entry(p_nat: int, p_na: int, p_nc: int,
-                          d_nat: int, d_na: int, d_nc: int):
+    def _after_surr_entry(p_nat: int, p_na: int, p_nc: int, d_nat: int, d_na: int, d_nc: int):
         if _is_player_ban_ban(p_nat, p_na, p_nc):
             return None, _settle_player_ban_ban(d_nat, d_na, d_nc)
         if _is_player_ban_luck(p_nat, p_na, p_nc):
@@ -789,12 +821,10 @@ def _build_game_tree() -> tuple[list[_TreeNode], list]:
         p_nat, p_na, p_nc = p_comp
         d_nat, d_na, d_nc = d_comp
         if _is_hard_fifteen_comp(d_nat, d_na, d_nc):
-            idx = _get_or_create(_NT_DEALER_SURR, p_nat, p_na, p_nc,
-                                 d_nat, d_na, d_nc)
+            idx = _get_or_create(_NT_DEALER_SURR, p_nat, p_na, p_nc, d_nat, d_na, d_nc)
             initial_entries.append((idx, prob, 0.0))
         else:
-            node_idx, imm_ev = _after_surr_entry(p_nat, p_na, p_nc,
-                                                  d_nat, d_na, d_nc)
+            node_idx, imm_ev = _after_surr_entry(p_nat, p_na, p_nc, d_nat, d_na, d_nc)
             initial_entries.append((node_idx, prob, imm_ev))
 
     # ── BFS: build transitions for every queued decision node ───────────────
@@ -808,8 +838,7 @@ def _build_game_tree() -> tuple[list[_TreeNode], list]:
             # SURRENDER → push (EV = 0)
             node.transitions[_D_SURRENDER] = [(_get_terminal(0.0), 1.0)]
             # CONTINUE → after-surrender routing
-            cont_idx, cont_ev = _after_surr_entry(p_nat, p_na, p_nc,
-                                                   d_nat, d_na, d_nc)
+            cont_idx, cont_ev = _after_surr_entry(p_nat, p_na, p_nc, d_nat, d_na, d_nc)
             if cont_idx is None:
                 node.transitions[_D_CONTINUE] = [(_get_terminal(cont_ev), 1.0)]
             else:
@@ -817,9 +846,7 @@ def _build_game_tree() -> tuple[list[_TreeNode], list]:
 
         elif nt == _NT_PLAYER:
             # STAND → dealer phase (forced hits from initial dealer comp)
-            node.transitions[_P_STAND] = _dealer_phase_trans(
-                p_nat, p_na, p_nc, d_nat, d_na, d_nc
-            )
+            node.transitions[_P_STAND] = _dealer_phase_trans(p_nat, p_na, p_nc, d_nat, d_na, d_nc)
             # HIT → draw a rank (chance node, RANK_PROB = 1/13)
             hit_trans: list = []
             for rank in range(NUM_RANKS):
@@ -830,21 +857,18 @@ def _build_game_tree() -> tuple[list[_TreeNode], list]:
                     hit_trans.append((_get_terminal(ev), RANK_PROB))
                 elif np_total == 21 or np_nc == 5:
                     # Forced stand: inline dealer phase directly
-                    for (child_idx, d_prob) in _dealer_phase_trans(
+                    for child_idx, d_prob in _dealer_phase_trans(
                         np_nat, np_na, np_nc, d_nat, d_na, d_nc
                     ):
                         hit_trans.append((child_idx, RANK_PROB * d_prob))
                 else:
-                    child = _get_or_create(_NT_PLAYER, np_nat, np_na, np_nc,
-                                           d_nat, d_na, d_nc)
+                    child = _get_or_create(_NT_PLAYER, np_nat, np_na, np_nc, d_nat, d_na, d_nc)
                     hit_trans.append((child, RANK_PROB))
             node.transitions[_P_HIT] = hit_trans
 
         else:  # _NT_DEALER_ACT
             # STAND and REVEAL both settle at the current dealer total
-            settle_ev = _cfr_settle(
-                p_nat, p_na, p_nc, d_nat, d_na, d_nc, d_busted=False
-            )
+            settle_ev = _cfr_settle(p_nat, p_na, p_nc, d_nat, d_na, d_nc, d_busted=False)
             term_idx = _get_terminal(settle_ev)
             node.transitions[_D_STAND] = [(term_idx, 1.0)]
             if _D_REVEAL in node.legal_actions:
@@ -853,7 +877,7 @@ def _build_game_tree() -> tuple[list[_TreeNode], list]:
             hit_trans = []
             for rank in range(NUM_RANKS):
                 nd_nat, nd_na, nd_nc = _transition(d_nat, d_na, d_nc, rank)
-                for (child_idx, d_prob) in _dealer_phase_trans(
+                for child_idx, d_prob in _dealer_phase_trans(
                     p_nat, p_na, p_nc, nd_nat, nd_na, nd_nc
                 ):
                     hit_trans.append((child_idx, RANK_PROB * d_prob))
@@ -910,7 +934,7 @@ def _build_numba_arrays(
     MAX_ACT = 3
 
     # ── Assign info-set slots (one table per node type) ──────────────────────
-    player_slot_map: dict = {}   # int-tuple key → slot index
+    player_slot_map: dict = {}  # int-tuple key → slot index
     surr_slot_map: dict = {}
     act_slot_map: dict = {}
 
@@ -950,9 +974,7 @@ def _build_numba_arrays(
 
     # ── Count total transitions ──────────────────────────────────────────────
     total_trans = sum(
-        len(node.transitions.get(a, []))
-        for node in nodes
-        for a in node.legal_actions
+        len(node.transitions.get(a, [])) for node in nodes for a in node.legal_actions
     )
 
     # ── CSR transition arrays ────────────────────────────────────────────────
@@ -966,7 +988,7 @@ def _build_numba_arrays(
         i = node.idx
         for j, a in enumerate(node.legal_actions):
             trans_start_arr[i, j] = ptr
-            for (child_idx, prob) in node.transitions[a]:
+            for child_idx, prob in node.transitions[a]:
                 trans_child_arr[ptr] = child_idx
                 trans_prob_arr[ptr] = prob
                 ptr += 1
@@ -994,11 +1016,23 @@ def _build_numba_arrays(
     act_rev = {v: k for k, v in act_slot_map.items()}
 
     return (
-        node_cat, terminal_ev_arr, info_slot_arr, n_actions_arr,
-        trans_start_arr, trans_end_arr, trans_child_arr, trans_prob_arr,
-        init_node_idx_arr, init_prob_arr, init_imm_ev_arr,
-        len(player_slot_map), len(surr_slot_map), len(act_slot_map),
-        player_rev, surr_rev, act_rev,
+        node_cat,
+        terminal_ev_arr,
+        info_slot_arr,
+        n_actions_arr,
+        trans_start_arr,
+        trans_end_arr,
+        trans_child_arr,
+        trans_prob_arr,
+        init_node_idx_arr,
+        init_prob_arr,
+        init_imm_ev_arr,
+        len(player_slot_map),
+        len(surr_slot_map),
+        len(act_slot_map),
+        player_rev,
+        surr_rev,
+        act_rev,
     )
 
 
@@ -1070,7 +1104,7 @@ def _cfr_pass_tabular(tables: _CfrTables, iteration: int) -> float:
     reach_d = [0.0] * n
     imm_ev_total = 0.0
 
-    for (node_idx, prob, imm_ev) in initial_entries:
+    for node_idx, prob, imm_ev in initial_entries:
         if node_idx is None:
             imm_ev_total += prob * imm_ev
         else:
@@ -1096,7 +1130,7 @@ def _cfr_pass_tabular(tables: _CfrTables, iteration: int) -> float:
             else:  # dealer node (SURR or ACT): dealer's own choices affect reach_d
                 child_rp = rp
                 child_rd = rd * s[a]
-            for (child_idx, _prob) in node.transitions[a]:
+            for child_idx, _prob in node.transitions[a]:
                 # _prob is a chance prob; NOT folded into reach_p / reach_d
                 if nodes[child_idx].node_type != _NT_TERMINAL:
                     reach_p[child_idx] += child_rp
@@ -1120,7 +1154,7 @@ def _cfr_pass_tabular(tables: _CfrTables, iteration: int) -> float:
         aevs: dict = {}
         for a in node.legal_actions:
             aev = 0.0
-            for (child_idx, prob) in node.transitions[a]:
+            for child_idx, prob in node.transitions[a]:
                 aev += prob * ev[child_idx]
             aevs[a] = aev
         node_ev = 0.0
@@ -1142,35 +1176,56 @@ def _cfr_pass_tabular(tables: _CfrTables, iteration: int) -> float:
 
         if nt == _NT_PLAYER:
             _update_strategy_sum(
-                node.info_set_key, s, rp, iteration,
+                node.info_set_key,
+                s,
+                rp,
+                iteration,
                 tables.player_strategy_sums,
             )
             _regret_update_player(
-                node.info_set_key, node.legal_actions, aevs,
-                node_ev_val, rd, tables.player_regrets,
+                node.info_set_key,
+                node.legal_actions,
+                aevs,
+                node_ev_val,
+                rd,
+                tables.player_regrets,
             )
         elif nt == _NT_DEALER_SURR:
             _update_strategy_sum(
-                node.info_set_key, s, rd, iteration,
+                node.info_set_key,
+                s,
+                rd,
+                iteration,
                 tables.dealer_surrender_strategy_sums,
             )
             _regret_update_dealer(
-                node.info_set_key, node.legal_actions, aevs,
-                node_ev_val, rp, tables.dealer_surrender_regrets,
+                node.info_set_key,
+                node.legal_actions,
+                aevs,
+                node_ev_val,
+                rp,
+                tables.dealer_surrender_regrets,
             )
         else:  # _NT_DEALER_ACT
             _update_strategy_sum(
-                node.info_set_key, s, rd, iteration,
+                node.info_set_key,
+                s,
+                rd,
+                iteration,
                 tables.dealer_action_strategy_sums,
             )
             _regret_update_dealer(
-                node.info_set_key, node.legal_actions, aevs,
-                node_ev_val, rp, tables.dealer_action_regrets,
+                node.info_set_key,
+                node.legal_actions,
+                aevs,
+                node_ev_val,
+                rp,
+                tables.dealer_action_regrets,
             )
 
     # ── Step 5: Compute probability-weighted EV for this iteration ───────────
     total_ev = imm_ev_total
-    for (node_idx, prob, _imm_ev) in initial_entries:
+    for node_idx, prob, _imm_ev in initial_entries:
         if node_idx is not None:
             total_ev += prob * ev[node_idx]
     return total_ev
@@ -1181,9 +1236,9 @@ def _cfr_pass_tabular(tables: _CfrTables, iteration: int) -> float:
 # _NT_* constants duplicated as plain ints so the @njit function needs no
 # module-level closure (Numba requires all referenced values to be scalar
 # literals or array arguments).
-_NB_PLAYER: int = 0    # == _NT_PLAYER
-_NB_SURR: int = 1      # == _NT_DEALER_SURR
-_NB_ACT: int = 2       # == _NT_DEALER_ACT
+_NB_PLAYER: int = 0  # == _NT_PLAYER
+_NB_SURR: int = 1  # == _NT_DEALER_SURR
+_NB_ACT: int = 2  # == _NT_DEALER_ACT
 _NB_TERMINAL: int = 3  # == _NT_TERMINAL
 
 
@@ -1194,29 +1249,28 @@ def _make_numba_kernel():
 
     NB_PLAYER = _NB_PLAYER
     NB_SURR = _NB_SURR
-    NB_ACT = _NB_ACT
 
     @numba.njit(cache=True)
     def _kernel(
         n_nodes,
-        node_cat,        # int32[n]   — 0=player, 1=surr, 2=act, 3=terminal
-        terminal_ev,     # float64[n]
-        info_slot,       # int32[n]
-        n_actions,       # int32[n]
-        trans_start,     # int32[n, 3]
-        trans_end,       # int32[n, 3]
-        trans_child,     # int32[total_trans]
-        trans_prob,      # float64[total_trans]
-        init_node_idx,   # int32[n_init]
-        init_prob,       # float64[n_init]
-        init_imm_ev,     # float64[n_init]
-        player_regrets,       # float64[n_player, 2]  — modified in-place
-        player_strategy_sums, # float64[n_player, 2]  — modified in-place
-        surr_regrets,         # float64[n_surr, 2]    — modified in-place
-        surr_strategy_sums,   # float64[n_surr, 2]    — modified in-place
-        act_regrets,          # float64[n_act, 3]     — modified in-place
-        act_strategy_sums,    # float64[n_act, 3]     — modified in-place
-        iteration,       # int64
+        node_cat,  # int32[n]   — 0=player, 1=surr, 2=act, 3=terminal
+        terminal_ev,  # float64[n]
+        info_slot,  # int32[n]
+        n_actions,  # int32[n]
+        trans_start,  # int32[n, 3]
+        trans_end,  # int32[n, 3]
+        trans_child,  # int32[total_trans]
+        trans_prob,  # float64[total_trans]
+        init_node_idx,  # int32[n_init]
+        init_prob,  # float64[n_init]
+        init_imm_ev,  # float64[n_init]
+        player_regrets,  # float64[n_player, 2]  — modified in-place
+        player_strategy_sums,  # float64[n_player, 2]  — modified in-place
+        surr_regrets,  # float64[n_surr, 2]    — modified in-place
+        surr_strategy_sums,  # float64[n_surr, 2]    — modified in-place
+        act_regrets,  # float64[n_act, 3]     — modified in-place
+        act_strategy_sums,  # float64[n_act, 3]     — modified in-place
+        iteration,  # int64
     ):
         """CFR+ inner loop: strategy → forward → backward → update → EV."""
         n_init = init_node_idx.shape[0]
@@ -1394,30 +1448,58 @@ def _cfr_pass_numba(numba_arrays: tuple, tables: _NumbaTables, iteration: int) -
         _NUMBA_KERNEL = _make_numba_kernel()
 
     (
-        node_cat, terminal_ev, info_slot, n_actions,
-        trans_start, trans_end, trans_child, trans_prob,
-        init_node_idx, init_prob, init_imm_ev,
-        _n_p, _n_s, _n_a,
-        _pr, _sr, _ar,
+        node_cat,
+        terminal_ev,
+        info_slot,
+        n_actions,
+        trans_start,
+        trans_end,
+        trans_child,
+        trans_prob,
+        init_node_idx,
+        init_prob,
+        init_imm_ev,
+        _n_p,
+        _n_s,
+        _n_a,
+        _pr,
+        _sr,
+        _ar,
     ) = numba_arrays
 
     return _NUMBA_KERNEL(
         len(node_cat),
-        node_cat, terminal_ev, info_slot, n_actions,
-        trans_start, trans_end, trans_child, trans_prob,
-        init_node_idx, init_prob, init_imm_ev,
-        tables.player_regrets, tables.player_strategy_sums,
-        tables.surr_regrets, tables.surr_strategy_sums,
-        tables.act_regrets, tables.act_strategy_sums,
+        node_cat,
+        terminal_ev,
+        info_slot,
+        n_actions,
+        trans_start,
+        trans_end,
+        trans_child,
+        trans_prob,
+        init_node_idx,
+        init_prob,
+        init_imm_ev,
+        tables.player_regrets,
+        tables.player_strategy_sums,
+        tables.surr_regrets,
+        tables.surr_strategy_sums,
+        tables.act_regrets,
+        tables.act_strategy_sums,
         iteration,
     )
 
 
 # ─── Dealer action phase CFR ───────────────────────────────────────────────────
 
+
 def _dealer_cfr(
-    p_nat: int, p_na: int, p_nc: int,
-    d_nat: int, d_na: int, d_nc: int,
+    p_nat: int,
+    p_na: int,
+    p_nc: int,
+    d_nat: int,
+    d_na: int,
+    d_nc: int,
     reach_p: float,
     reach_d: float,
     tables: _CfrTables,
@@ -1459,10 +1541,17 @@ def _dealer_cfr(
         ev = 0.0
         for (nd_nat, nd_na, nd_nc), prob in _forced_hit_dist(d_nat, d_na, d_nc).items():
             ev += prob * _dealer_cfr(
-                p_nat, p_na, p_nc,
-                nd_nat, nd_na, nd_nc,
-                reach_p, reach_d,
-                tables, iteration, memo,
+                p_nat,
+                p_na,
+                p_nc,
+                nd_nat,
+                nd_na,
+                nd_nc,
+                reach_p,
+                reach_d,
+                tables,
+                iteration,
+                memo,
             )
         return ev
 
@@ -1480,8 +1569,17 @@ def _dealer_cfr(
             for rank in range(NUM_RANKS):
                 nd_nat, nd_na, nd_nc = _transition(d_nat, d_na, d_nc, rank)
                 ev += RANK_PROB * _dealer_cfr(
-                    p_nat, p_na, p_nc, nd_nat, nd_na, nd_nc,
-                    reach_p, reach_d, tables, iteration, memo,
+                    p_nat,
+                    p_na,
+                    p_nc,
+                    nd_nat,
+                    nd_na,
+                    nd_nc,
+                    reach_p,
+                    reach_d,
+                    tables,
+                    iteration,
+                    memo,
                 )
             return ev
         # _D_STAND or _D_REVEAL: terminal for player in heads-up
@@ -1489,7 +1587,7 @@ def _dealer_cfr(
 
     # Within-pass memoization: check if action EVs already computed for this state.
     # Key: dealer strategic state — p_comp and d_comp uniquely determine the subtree.
-    memo_key = (p_nat, p_na, p_nc, d_nat, d_na, d_nc, 'd')
+    memo_key = (p_nat, p_na, p_nc, d_nat, d_na, d_nc, "d")
     if memo is not None and memo_key in memo:
         cached_action_evs, cached_node_ev = memo[memo_key]
         # Recompute strategy from current regrets (fast), do regret/sum updates.
@@ -1499,7 +1597,11 @@ def _dealer_cfr(
         )
         node_ev = sum(strategy[a] * cached_action_evs[a] for a in legal_int)
         _regret_update_dealer(
-            d_key, legal_int, cached_action_evs, node_ev, reach_p,
+            d_key,
+            legal_int,
+            cached_action_evs,
+            node_ev,
+            reach_p,
             tables.dealer_action_regrets,
         )
         return node_ev
@@ -1508,28 +1610,31 @@ def _dealer_cfr(
     strategy = _get_strategy(d_key, tables.dealer_action_regrets, legal_int)
 
     # Update strategy sums (weighted by dealer's own reach)
-    _update_strategy_sum(
-        d_key, strategy, reach_d, iteration, tables.dealer_action_strategy_sums
-    )
+    _update_strategy_sum(d_key, strategy, reach_d, iteration, tables.dealer_action_strategy_sums)
 
     # Compute EV for each legal action
     action_evs: dict[int, float] = {}
     for a in legal_int:
         if a in (_D_STAND, _D_REVEAL):
             # Both settle player at current dealer total (same in heads-up)
-            action_evs[a] = _cfr_settle(
-                p_nat, p_na, p_nc, d_nat, d_na, d_nc, d_busted=False
-            )
+            action_evs[a] = _cfr_settle(p_nat, p_na, p_nc, d_nat, d_na, d_nc, d_busted=False)
         else:
             # _D_HIT: draw a card (chance node)
             hit_ev = 0.0
             for rank in range(NUM_RANKS):
                 nd_nat, nd_na, nd_nc = _transition(d_nat, d_na, d_nc, rank)
                 hit_ev += RANK_PROB * _dealer_cfr(
-                    p_nat, p_na, p_nc,
-                    nd_nat, nd_na, nd_nc,
-                    reach_p, reach_d * strategy[a],
-                    tables, iteration, memo,
+                    p_nat,
+                    p_na,
+                    p_nc,
+                    nd_nat,
+                    nd_na,
+                    nd_nc,
+                    reach_p,
+                    reach_d * strategy[a],
+                    tables,
+                    iteration,
+                    memo,
                 )
             action_evs[a] = hit_ev
 
@@ -1538,7 +1643,11 @@ def _dealer_cfr(
 
     # Update dealer regrets (dealer is minimiser)
     _regret_update_dealer(
-        d_key, legal_int, action_evs, node_ev, reach_p,
+        d_key,
+        legal_int,
+        action_evs,
+        node_ev,
+        reach_p,
         tables.dealer_action_regrets,
     )
 
@@ -1551,9 +1660,14 @@ def _dealer_cfr(
 
 # ─── Player action phase CFR ───────────────────────────────────────────────────
 
+
 def _player_cfr(
-    p_nat: int, p_na: int, p_nc: int,
-    d_nat: int, d_na: int, d_nc: int,
+    p_nat: int,
+    p_na: int,
+    p_nc: int,
+    d_nat: int,
+    d_na: int,
+    d_nc: int,
     reach_p: float,
     reach_d: float,
     tables: _CfrTables,
@@ -1587,8 +1701,17 @@ def _player_cfr(
     # Forced stand: player at 21 or has 5 cards → proceed to dealer phase
     if p_total == 21 or p_nc == 5:
         return _dealer_cfr(
-            p_nat, p_na, p_nc, d_nat, d_na, d_nc,
-            reach_p, reach_d, tables, iteration, memo,
+            p_nat,
+            p_na,
+            p_nc,
+            d_nat,
+            d_na,
+            d_nc,
+            reach_p,
+            reach_d,
+            tables,
+            iteration,
+            memo,
         )
 
     # Player decision node
@@ -1598,17 +1721,19 @@ def _player_cfr(
 
     # Within-pass memoization: check if action EVs already computed for this state.
     # The (p_comp, d_comp) pair uniquely identifies the subtree under fixed strategies.
-    memo_key = (p_nat, p_na, p_nc, d_nat, d_na, d_nc, 'p')
+    memo_key = (p_nat, p_na, p_nc, d_nat, d_na, d_nc, "p")
     if memo is not None and memo_key in memo:
         cached_action_evs, cached_node_ev = memo[memo_key]
         # Recompute strategy from current regrets (fast), do regret/sum updates.
         strategy = _get_strategy(p_key, tables.player_regrets, legal_int)
-        _update_strategy_sum(
-            p_key, strategy, reach_p, iteration, tables.player_strategy_sums
-        )
+        _update_strategy_sum(p_key, strategy, reach_p, iteration, tables.player_strategy_sums)
         node_ev = sum(strategy[a] * cached_action_evs[a] for a in legal_int)
         _regret_update_player(
-            p_key, legal_int, cached_action_evs, node_ev, reach_d,
+            p_key,
+            legal_int,
+            cached_action_evs,
+            node_ev,
+            reach_d,
             tables.player_regrets,
         )
         return node_ev
@@ -1617,18 +1742,24 @@ def _player_cfr(
     strategy = _get_strategy(p_key, tables.player_regrets, legal_int)
 
     # Update strategy sums (weighted by player's own reach)
-    _update_strategy_sum(
-        p_key, strategy, reach_p, iteration, tables.player_strategy_sums
-    )
+    _update_strategy_sum(p_key, strategy, reach_p, iteration, tables.player_strategy_sums)
 
     # Compute EV for each legal action
     action_evs: dict[int, float] = {}
     for a in legal_int:
         if a == _P_STAND:
             action_evs[a] = _dealer_cfr(
-                p_nat, p_na, p_nc, d_nat, d_na, d_nc,
-                reach_p * strategy[a], reach_d,
-                tables, iteration, memo,
+                p_nat,
+                p_na,
+                p_nc,
+                d_nat,
+                d_na,
+                d_nc,
+                reach_p * strategy[a],
+                reach_d,
+                tables,
+                iteration,
+                memo,
             )
         else:
             # _P_HIT: draw a card (chance node)
@@ -1636,9 +1767,17 @@ def _player_cfr(
             for rank in range(NUM_RANKS):
                 np_nat, np_na, np_nc = _transition(p_nat, p_na, p_nc, rank)
                 hit_ev += RANK_PROB * _player_cfr(
-                    np_nat, np_na, np_nc, d_nat, d_na, d_nc,
-                    reach_p * strategy[a], reach_d,
-                    tables, iteration, memo,
+                    np_nat,
+                    np_na,
+                    np_nc,
+                    d_nat,
+                    d_na,
+                    d_nc,
+                    reach_p * strategy[a],
+                    reach_d,
+                    tables,
+                    iteration,
+                    memo,
                 )
             action_evs[a] = hit_ev
 
@@ -1647,7 +1786,11 @@ def _player_cfr(
 
     # Update player regrets (player is maximiser)
     _regret_update_player(
-        p_key, legal_int, action_evs, node_ev, reach_d,
+        p_key,
+        legal_int,
+        action_evs,
+        node_ev,
+        reach_d,
         tables.player_regrets,
     )
 
@@ -1660,9 +1803,14 @@ def _player_cfr(
 
 # ─── Root traversal ────────────────────────────────────────────────────────────
 
+
 def _after_surrender(
-    p_nat: int, p_na: int, p_nc: int,
-    d_nat: int, d_na: int, d_nc: int,
+    p_nat: int,
+    p_na: int,
+    p_nc: int,
+    d_nat: int,
+    d_na: int,
+    d_nc: int,
     reach_p: float,
     reach_d: float,
     tables: _CfrTables,
@@ -1687,8 +1835,17 @@ def _after_surrender(
 
     # Normal hand: proceed to player action phase
     return _player_cfr(
-        p_nat, p_na, p_nc, d_nat, d_na, d_nc,
-        reach_p, reach_d, tables, iteration, memo,
+        p_nat,
+        p_na,
+        p_nc,
+        d_nat,
+        d_na,
+        d_nc,
+        reach_p,
+        reach_d,
+        tables,
+        iteration,
+        memo,
     )
 
 
@@ -1732,7 +1889,10 @@ def _root_cfr(
         surr_legal_int = [_D_SURRENDER, _D_CONTINUE]
         strategy = _get_strategy(s_key, tables.dealer_surrender_regrets, surr_legal_int)
         _update_strategy_sum(
-            s_key, strategy, reach_d, iteration,
+            s_key,
+            strategy,
+            reach_d,
+            iteration,
             tables.dealer_surrender_strategy_sums,
         )
 
@@ -1743,26 +1903,48 @@ def _root_cfr(
             else:
                 # _D_CONTINUE (DealerAction.HIT used as "no-surrender" sentinel)
                 action_evs[a] = _after_surrender(
-                    p_nat, p_na, p_nc, d_nat, d_na, d_nc,
-                    reach_p, reach_d * strategy[a],
-                    tables, iteration, memo,
+                    p_nat,
+                    p_na,
+                    p_nc,
+                    d_nat,
+                    d_na,
+                    d_nc,
+                    reach_p,
+                    reach_d * strategy[a],
+                    tables,
+                    iteration,
+                    memo,
                 )
 
         node_ev = sum(strategy[a] * action_evs[a] for a in surr_legal_int)
         _regret_update_dealer(
-            s_key, surr_legal_int, action_evs, node_ev, reach_p,
+            s_key,
+            surr_legal_int,
+            action_evs,
+            node_ev,
+            reach_p,
             tables.dealer_surrender_regrets,
         )
         return node_ev
     else:
         # No surrender option — continue directly
         return _after_surrender(
-            p_nat, p_na, p_nc, d_nat, d_na, d_nc,
-            reach_p, reach_d, tables, iteration, memo,
+            p_nat,
+            p_na,
+            p_nc,
+            d_nat,
+            d_na,
+            d_nc,
+            reach_p,
+            reach_d,
+            tables,
+            iteration,
+            memo,
         )
 
 
 # ─── CFR+ main loop ────────────────────────────────────────────────────────────
+
 
 def _cfr_pass_recursive(
     initial_deals: list[tuple[Comp, Comp, float]],
@@ -1795,6 +1977,7 @@ def _cfr_pass_recursive(
 # These replace the generic _extract_avg_strategy in solve(). They convert
 # int-keyed internal tables back to NamedTuple+Enum keys for the public API.
 
+
 def _extract_player_avg_strategy(sums_table: dict) -> PlayerStrategyDict:
     """Extract normalised average player strategy from int-keyed sums table."""
     result: PlayerStrategyDict = {}
@@ -1807,8 +1990,7 @@ def _extract_player_avg_strategy(sums_table: dict) -> PlayerStrategyDict:
             result[info_set] = {_INT_TO_PLAYER_ACTION[a]: prob for a in int_legal}
         else:
             result[info_set] = {
-                _INT_TO_PLAYER_ACTION[a]: action_sums.get(a, 0.0) / total_w
-                for a in int_legal
+                _INT_TO_PLAYER_ACTION[a]: action_sums.get(a, 0.0) / total_w for a in int_legal
             }
     return result
 
@@ -1825,8 +2007,7 @@ def _extract_surrender_avg_strategy(sums_table: dict) -> DealerSurrenderStrategy
             result[info_set] = {_INT_TO_SURRENDER_ACTION[a]: prob for a in int_legal}
         else:
             result[info_set] = {
-                _INT_TO_SURRENDER_ACTION[a]: action_sums.get(a, 0.0) / total_w
-                for a in int_legal
+                _INT_TO_SURRENDER_ACTION[a]: action_sums.get(a, 0.0) / total_w for a in int_legal
             }
     return result
 
@@ -1845,13 +2026,13 @@ def _extract_dealer_action_avg_strategy(sums_table: dict) -> DealerActionStrateg
             result[info_set] = {_INT_TO_DEALER_ACTION[a]: prob for a in int_legal}
         else:
             result[info_set] = {
-                _INT_TO_DEALER_ACTION[a]: action_sums.get(a, 0.0) / total_w
-                for a in int_legal
+                _INT_TO_DEALER_ACTION[a]: action_sums.get(a, 0.0) / total_w for a in int_legal
             }
     return result
 
 
 # ─── Numpy → strategy extraction helpers (C3c) ─────────────────────────────────
+
 
 def _extract_player_avg_from_numpy(
     sums: np.ndarray,
@@ -1925,11 +2106,25 @@ def solve(
     if _NUMBA_AVAILABLE:
         # ── Numba path (C3c) ─────────────────────────────────────────────────
         na = _get_or_build_numba_arrays()
-        (_, _, _, _,
-         _, _, _, _,
-         _, _, _,
-         n_player_slots, n_surr_slots, n_act_slots,
-         player_rev, surr_rev, act_rev) = na
+        (
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            n_player_slots,
+            n_surr_slots,
+            n_act_slots,
+            player_rev,
+            surr_rev,
+            act_rev,
+        ) = na
 
         nt = _NumbaTables(
             player_regrets=np.zeros((n_player_slots, 2)),
@@ -1944,24 +2139,23 @@ def solve(
             nash_ev = _cfr_pass_numba(na, nt, iteration)
 
             if iteration % convergence_check_every == 0:
-                avg_player = _extract_player_avg_from_numpy(
-                    nt.player_strategy_sums, player_rev)
-                avg_surrender = _extract_surrender_avg_from_numpy(
-                    nt.surr_strategy_sums, surr_rev)
-                avg_action = _extract_dealer_action_avg_from_numpy(
-                    nt.act_strategy_sums, act_rev)
+                avg_player = _extract_player_avg_from_numpy(nt.player_strategy_sums, player_rev)
+                avg_surrender = _extract_surrender_avg_from_numpy(nt.surr_strategy_sums, surr_rev)
+                avg_action = _extract_dealer_action_avg_from_numpy(nt.act_strategy_sums, act_rev)
                 exploitability = compute_exploitability(
-                    avg_player, avg_surrender, avg_action, initial_deals)
+                    avg_player, avg_surrender, avg_action, initial_deals
+                )
                 if exploitability < exploitability_threshold:
                     converged = True
                     break
 
-        player_strategy = _extract_player_avg_from_numpy(
-            nt.player_strategy_sums, player_rev)
+        player_strategy = _extract_player_avg_from_numpy(nt.player_strategy_sums, player_rev)
         dealer_surrender_strategy = _extract_surrender_avg_from_numpy(
-            nt.surr_strategy_sums, surr_rev)
+            nt.surr_strategy_sums, surr_rev
+        )
         dealer_action_strategy = _extract_dealer_action_avg_from_numpy(
-            nt.act_strategy_sums, act_rev)
+            nt.act_strategy_sums, act_rev
+        )
 
     else:
         # ── Pure-Python tabular fallback ─────────────────────────────────────
@@ -1971,24 +2165,25 @@ def solve(
             nash_ev = _cfr_pass_tabular(tables, iteration)
 
             if iteration % convergence_check_every == 0:
-                avg_player = _extract_player_avg_strategy(
-                    tables.player_strategy_sums)
+                avg_player = _extract_player_avg_strategy(tables.player_strategy_sums)
                 avg_surrender = _extract_surrender_avg_strategy(
-                    tables.dealer_surrender_strategy_sums)
-                avg_action = _extract_dealer_action_avg_strategy(
-                    tables.dealer_action_strategy_sums)
+                    tables.dealer_surrender_strategy_sums
+                )
+                avg_action = _extract_dealer_action_avg_strategy(tables.dealer_action_strategy_sums)
                 exploitability = compute_exploitability(
-                    avg_player, avg_surrender, avg_action, initial_deals)
+                    avg_player, avg_surrender, avg_action, initial_deals
+                )
                 if exploitability < exploitability_threshold:
                     converged = True
                     break
 
-        player_strategy = _extract_player_avg_strategy(
-            tables.player_strategy_sums)
+        player_strategy = _extract_player_avg_strategy(tables.player_strategy_sums)
         dealer_surrender_strategy = _extract_surrender_avg_strategy(
-            tables.dealer_surrender_strategy_sums)
+            tables.dealer_surrender_strategy_sums
+        )
         dealer_action_strategy = _extract_dealer_action_avg_strategy(
-            tables.dealer_action_strategy_sums)
+            tables.dealer_action_strategy_sums
+        )
 
     return CfrResult(
         player_strategy=player_strategy,
@@ -2003,9 +2198,14 @@ def solve(
 
 # ─── Best-response and exploitability ──────────────────────────────────────────
 
+
 def _br_dealer_phase(
-    p_nat: int, p_na: int, p_nc: int,
-    d_nat: int, d_na: int, d_nc: int,
+    p_nat: int,
+    p_na: int,
+    p_nc: int,
+    d_nat: int,
+    d_na: int,
+    d_nc: int,
     dealer_action_strategy: DealerActionStrategyDict,
 ) -> float:
     """Dealer phase EV against a fixed dealer action strategy (for best-response).
@@ -2045,7 +2245,7 @@ def _br_dealer_phase(
         strategy = dealer_action_strategy[info_set]
     else:
         p_uniform = 1.0 / len(legal_actions)
-        strategy = {a: p_uniform for a in legal_actions}
+        strategy = dict.fromkeys(legal_actions, p_uniform)
 
     ev = 0.0
     for a in legal_actions:
@@ -2053,9 +2253,7 @@ def _br_dealer_phase(
         if prob <= 0.0:
             continue
         if a in (DealerAction.STAND, DealerAction.REVEAL_PLAYER):
-            ev += prob * _cfr_settle(
-                p_nat, p_na, p_nc, d_nat, d_na, d_nc, d_busted=False
-            )
+            ev += prob * _cfr_settle(p_nat, p_na, p_nc, d_nat, d_na, d_nc, d_busted=False)
         else:
             hit_ev = 0.0
             for rank in range(NUM_RANKS):
@@ -2087,8 +2285,7 @@ def _best_player_ev(
     """
     memo: dict = {}
 
-    def player_ev(p_nat: int, p_na: int, p_nc: int,
-                  d_nat: int, d_na: int, d_nc: int) -> float:
+    def player_ev(p_nat: int, p_na: int, p_nc: int, d_nat: int, d_na: int, d_nc: int) -> float:
         key = (p_nat, p_na, p_nc, d_nat, d_na, d_nc)
         if key in memo:
             return memo[key]
@@ -2098,15 +2295,11 @@ def _best_player_ev(
             memo[key] = result
             return result
         if p_total == 21 or p_nc == 5:
-            result = _br_dealer_phase(
-                p_nat, p_na, p_nc, d_nat, d_na, d_nc, dealer_action_strategy
-            )
+            result = _br_dealer_phase(p_nat, p_na, p_nc, d_nat, d_na, d_nc, dealer_action_strategy)
             memo[key] = result
             return result
         # Player picks optimally
-        ev_stand = _br_dealer_phase(
-            p_nat, p_na, p_nc, d_nat, d_na, d_nc, dealer_action_strategy
-        )
+        ev_stand = _br_dealer_phase(p_nat, p_na, p_nc, d_nat, d_na, d_nc, dealer_action_strategy)
         ev_hit = 0.0
         for rank in range(NUM_RANKS):
             np_nat, np_na, np_nc = _transition(p_nat, p_na, p_nc, rank)
@@ -2154,7 +2347,6 @@ def _best_player_ev(
     return total_ev
 
 
-
 def _best_dealer_ev(
     player_strategy: PlayerStrategyDict,
     initial_deals: list[tuple[Comp, Comp, float]],
@@ -2177,8 +2369,7 @@ def _best_dealer_ev(
     memo_player: dict = {}
     memo_dealer: dict = {}
 
-    def player_done_ev(p_nat: int, p_na: int, p_nc: int,
-                       d_nat: int, d_na: int, d_nc: int) -> float:
+    def player_done_ev(p_nat: int, p_na: int, p_nc: int, d_nat: int, d_na: int, d_nc: int) -> float:
         """EV with player done at p_comp, dealer making optimal decisions."""
         key = (p_nat, p_na, p_nc, d_nat, d_na, d_nc)
         if key in memo_dealer:
@@ -2220,9 +2411,7 @@ def _best_dealer_ev(
                 hit_ev = 0.0
                 for rank in range(NUM_RANKS):
                     nd_nat, nd_na, nd_nc = _transition(d_nat, d_na, d_nc, rank)
-                    hit_ev += RANK_PROB * player_done_ev(
-                        p_nat, p_na, p_nc, nd_nat, nd_na, nd_nc
-                    )
+                    hit_ev += RANK_PROB * player_done_ev(p_nat, p_na, p_nc, nd_nat, nd_na, nd_nc)
                 action_evs_local[a] = hit_ev
 
         # Dealer is minimiser: pick the action with lowest player EV
@@ -2230,8 +2419,9 @@ def _best_dealer_ev(
         memo_dealer[key] = result
         return result
 
-    def player_phase_ev(p_nat: int, p_na: int, p_nc: int,
-                        d_nat: int, d_na: int, d_nc: int) -> float:
+    def player_phase_ev(
+        p_nat: int, p_na: int, p_nc: int, d_nat: int, d_na: int, d_nc: int
+    ) -> float:
         """Player EV when player follows fixed strategy."""
         key = (p_nat, p_na, p_nc, d_nat, d_na, d_nc)
         if key in memo_player:
@@ -2257,7 +2447,7 @@ def _best_dealer_ev(
             strategy = player_strategy[info_set]
         else:
             p_uniform = 1.0 / len(legal_actions)
-            strategy = {a: p_uniform for a in legal_actions}
+            strategy = dict.fromkeys(legal_actions, p_uniform)
 
         ev = 0.0
         for a in legal_actions:
@@ -2270,9 +2460,7 @@ def _best_dealer_ev(
                 hit_ev = 0.0
                 for rank in range(NUM_RANKS):
                     np_nat, np_na, np_nc = _transition(p_nat, p_na, p_nc, rank)
-                    hit_ev += RANK_PROB * player_phase_ev(
-                        np_nat, np_na, np_nc, d_nat, d_na, d_nc
-                    )
+                    hit_ev += RANK_PROB * player_phase_ev(np_nat, np_na, np_nc, d_nat, d_na, d_nc)
                 ev += prob * hit_ev
 
         memo_player[key] = ev
@@ -2350,15 +2538,14 @@ def compute_exploitability(
     if initial_deals is None:
         initial_deals = _build_initial_deals()
 
-    best_player = _best_player_ev(
-        dealer_surrender_strategy, dealer_action_strategy, initial_deals
-    )
+    best_player = _best_player_ev(dealer_surrender_strategy, dealer_action_strategy, initial_deals)
     worst_player = _best_dealer_ev(player_strategy, initial_deals)
 
     return max(0.0, best_player - worst_player)
 
 
 # ─── Public strategy helpers ───────────────────────────────────────────────────
+
 
 def get_player_action(
     result: CfrResult,

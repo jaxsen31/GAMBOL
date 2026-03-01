@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from src.engine.cards import str_to_card
 from src.engine.deck import (
     available_cards,
     build_deck_from_hands,
@@ -14,7 +15,6 @@ from src.engine.deck import (
     deal_specific_card,
     deal_specific_card_by_str,
 )
-from src.engine.cards import str_to_card
 
 
 class TestCreateDeck:
@@ -123,30 +123,30 @@ class TestDealSpecificCard:
 class TestDealSpecificCardByStr:
     def test_basic(self):
         deck = create_deck()
-        card = deal_specific_card_by_str(deck, 'AS')
+        card = deal_specific_card_by_str(deck, "AS")
         assert card == 51
         assert deck[51] == 0
 
     def test_ten_card(self):
         deck = create_deck()
-        card = deal_specific_card_by_str(deck, '10C')
+        card = deal_specific_card_by_str(deck, "10C")
         assert card == 32
         assert deck[32] == 0
 
 
 class TestBuildDeckFromHands:
     def test_two_card_hands(self):
-        player = (str_to_card('AS'), str_to_card('KH'))
-        dealer = (str_to_card('AC'), str_to_card('QD'))
+        player = (str_to_card("AS"), str_to_card("KH"))
+        dealer = (str_to_card("AC"), str_to_card("QD"))
         deck = build_deck_from_hands(player, dealer)
         assert cards_remaining(deck) == 48
-        assert deck[str_to_card('AS')] == 0
-        assert deck[str_to_card('KH')] == 0
-        assert deck[str_to_card('AC')] == 0
-        assert deck[str_to_card('QD')] == 0
+        assert deck[str_to_card("AS")] == 0
+        assert deck[str_to_card("KH")] == 0
+        assert deck[str_to_card("AC")] == 0
+        assert deck[str_to_card("QD")] == 0
 
     def test_single_hand(self):
-        player = (str_to_card('7C'), str_to_card('7D'), str_to_card('7H'))
+        player = (str_to_card("7C"), str_to_card("7D"), str_to_card("7H"))
         deck = build_deck_from_hands(player)
         assert cards_remaining(deck) == 49
 
@@ -155,7 +155,7 @@ class TestBuildDeckFromHands:
         assert cards_remaining(deck) == 52
 
     def test_duplicate_card_raises(self):
-        hand_a = (str_to_card('AS'),)
-        hand_b = (str_to_card('AS'),)
+        hand_a = (str_to_card("AS"),)
+        hand_b = (str_to_card("AS"),)
         with pytest.raises(ValueError):
             build_deck_from_hands(hand_a, hand_b)

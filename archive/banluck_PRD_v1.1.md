@@ -2,10 +2,10 @@
 
 ## Project Overview
 
-**Project Name:** Banluck Solver  
-**Version:** 1.1  
-**Author:** Jax  
-**Date:** February 2026  
+**Project Name:** Banluck Solver
+**Version:** 1.1
+**Author:** Jax
+**Date:** February 2026
 **Objective:** Develop a computational solver to determine game-theoretically optimal strategies for both player and dealer (banker) in the Chinese Blackjack variant "Banluck" with specific house rules.
 
 **Changelog from v1.0:**
@@ -346,21 +346,21 @@ def is_hard_fifteen(hand_cards: tuple[int, ...]) -> bool:
 # CORRECT: Reveal 3+ card players BEFORE hitting at 16/17
 def dealer_action_sequence(dealer_hand, player_hand, deck):
     dealer_total = calculate_total(dealer_hand)
-    
+
     if dealer_total in (16, 17):  # Includes soft 17
         # Step 1: Reveal and settle 3+ card players first
         if len(player_hand) >= 3:
             outcome = compare_hands(dealer_hand, player_hand)
             settle(player, outcome)
             player.is_active = False
-        
+
         # Step 2: Dealer now decides to hit against remaining 2-card players
         # (Optimal strategy determined by solver)
         dealer_hits = should_dealer_hit(dealer_hand, deck)
         if dealer_hits:
             new_card = deal_card(deck)
             dealer_hand.append(new_card)
-        
+
         # Step 3: Reveal and settle remaining active players
         if player.is_active:
             outcome = compare_hands(dealer_hand, player_hand)
@@ -619,9 +619,9 @@ DECK_RANK_COUNTS: np.ndarray = np.array([4]*13, dtype=np.int8)
 
 ## 9. Development Phases
 
-**Week 1–2:** Game engine + comprehensive testing (100% rule coverage)  
-**Week 3–4:** Baseline solver (player-only strategy, fixed dealer)  
-**Week 5–8:** CFR+ implementation (full Nash equilibrium)  
+**Week 1–2:** Game engine + comprehensive testing (100% rule coverage)
+**Week 3–4:** Baseline solver (player-only strategy, fixed dealer)
+**Week 5–8:** CFR+ implementation (full Nash equilibrium)
 **Week 9+:** Analysis, visualization, practical insights
 
 ---
@@ -642,10 +642,10 @@ DECK_RANK_COUNTS: np.ndarray = np.array([4]*13, dtype=np.int8)
 
 ## 11. Current Status
 
-✅ **All rules clarified and finalized (v1.1)**  
-✅ **PRD complete — all 11 gaps from review resolved**  
-✅ **Implementation guidance and gotchas documented**  
-⏭️ **Ready to begin Step 1.1: `deck.py` + `hand.py` implementation**  
+✅ **All rules clarified and finalized (v1.1)**
+✅ **PRD complete — all 11 gaps from review resolved**
+✅ **Implementation guidance and gotchas documented**
+⏭️ **Ready to begin Step 1.1: `deck.py` + `hand.py` implementation**
 ⏭️ **Next: Game engine with comprehensive unit tests for all 14 edge cases**
 
 ---

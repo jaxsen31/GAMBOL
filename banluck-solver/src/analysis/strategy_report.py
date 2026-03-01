@@ -36,6 +36,7 @@ _MC_EV_REVEAL_ON: float = -0.0375
 
 # ─── Public report functions ──────────────────────────────────────────────────
 
+
 def print_nash_ev(result: CfrResult) -> None:
     """Print Nash EV summary and comparison to DP/MC baselines.
 
@@ -54,10 +55,18 @@ def print_nash_ev(result: CfrResult) -> None:
     print(f"  Converged:       {'yes' if result.converged else 'no'}")
     print()
     print("  Comparison to baselines (player perspective):")
-    print(f"    DP reveal=OFF  {_DP_EV_REVEAL_OFF:+.4f} ({_DP_EV_REVEAL_OFF*100:+.2f}%)  [infinite-deck]")
-    print(f"    DP reveal=ON   {_DP_EV_REVEAL_ON:+.4f} ({_DP_EV_REVEAL_ON*100:+.2f}%)  [infinite-deck]")
-    print(f"    MC reveal=OFF  {_MC_EV_REVEAL_OFF:+.4f} ({_MC_EV_REVEAL_OFF*100:+.2f}%)  [real-deck, 200k hands]")
-    print(f"    MC reveal=ON   {_MC_EV_REVEAL_ON:+.4f} ({_MC_EV_REVEAL_ON*100:+.2f}%)  [real-deck, 200k hands]")
+    print(
+        f"    DP reveal=OFF  {_DP_EV_REVEAL_OFF:+.4f} ({_DP_EV_REVEAL_OFF * 100:+.2f}%)  [infinite-deck]"
+    )
+    print(
+        f"    DP reveal=ON   {_DP_EV_REVEAL_ON:+.4f} ({_DP_EV_REVEAL_ON * 100:+.2f}%)  [infinite-deck]"
+    )
+    print(
+        f"    MC reveal=OFF  {_MC_EV_REVEAL_OFF:+.4f} ({_MC_EV_REVEAL_OFF * 100:+.2f}%)  [real-deck, 200k hands]"
+    )
+    print(
+        f"    MC reveal=ON   {_MC_EV_REVEAL_ON:+.4f} ({_MC_EV_REVEAL_ON * 100:+.2f}%)  [real-deck, 200k hands]"
+    )
     print()
 
 
@@ -160,17 +169,17 @@ def print_reveal_advantage(result: CfrResult) -> None:
     print("Reveal Advantage — EV delta (player perspective)")
     print("=" * 56)
     print(f"  {'Source':<14}  {'reveal=OFF':>10}  {'reveal=ON':>9}  {'delta':>7}")
-    print(f"  {'-'*14}  {'----------':>10}  {'---------':>9}  {'-------':>7}")
+    print(f"  {'-' * 14}  {'----------':>10}  {'---------':>9}  {'-------':>7}")
     print(
-        f"  {'DP (inf-deck)':<14}  {_DP_EV_REVEAL_OFF*100:>+9.2f}%"
-        f"  {_DP_EV_REVEAL_ON*100:>+8.2f}%  {dp_delta*100:>+6.2f}%"
+        f"  {'DP (inf-deck)':<14}  {_DP_EV_REVEAL_OFF * 100:>+9.2f}%"
+        f"  {_DP_EV_REVEAL_ON * 100:>+8.2f}%  {dp_delta * 100:>+6.2f}%"
     )
     print(
-        f"  {'MC (real-deck)':<14}  {_MC_EV_REVEAL_OFF*100:>+9.2f}%"
-        f"  {_MC_EV_REVEAL_ON*100:>+8.2f}%  {mc_delta*100:>+6.2f}%"
+        f"  {'MC (real-deck)':<14}  {_MC_EV_REVEAL_OFF * 100:>+9.2f}%"
+        f"  {_MC_EV_REVEAL_ON * 100:>+8.2f}%  {mc_delta * 100:>+6.2f}%"
     )
     print(f"  {'CFR (1v1)':<14}  {'N/A':>10}  {'N/A':>9}  {'N/A':>7}")
-    print(f"  (heads-up: reveal ≡ stand — no separate EV decomposition)")
+    print("  (heads-up: reveal ≡ stand — no separate EV decomposition)")
     print()
 
     # ── Section 2: GTO reveal frequency from CFR ─────────────────────────────
@@ -178,12 +187,10 @@ def print_reveal_advantage(result: CfrResult) -> None:
     print("GTO Reveal Frequency at 16/17  (3+-card player only)")
     print("=" * 56)
     print(
-        f"  {'Total':>5}  {'Soft':>4}  {'PNC':>3}"
-        f"  {'P(hit)':>6}  {'P(stand)':>8}  {'P(reveal)':>9}"
+        f"  {'Total':>5}  {'Soft':>4}  {'PNC':>3}  {'P(hit)':>6}  {'P(stand)':>8}  {'P(reveal)':>9}"
     )
     print(
-        f"  {'-----':>5}  {'----':>4}  {'---':>3}"
-        f"  {'------':>6}  {'--------':>8}  {'---------':>9}"
+        f"  {'-----':>5}  {'----':>4}  {'---':>3}  {'------':>6}  {'--------':>8}  {'---------':>9}"
     )
 
     reveal_nodes = sorted(
@@ -229,8 +236,8 @@ def print_reveal_advantage(result: CfrResult) -> None:
     print("Research Question Answers")
     print("=" * 56)
     print(
-        f"  Q1 (Reveal value): Selective reveal is worth +{dp_delta*100:.2f}%"
-        f" (DP, inf-deck) to +{mc_delta*100:.2f}% (MC, real-deck) in a"
+        f"  Q1 (Reveal value): Selective reveal is worth +{dp_delta * 100:.2f}%"
+        f" (DP, inf-deck) to +{mc_delta * 100:.2f}% (MC, real-deck) in a"
         f" multi-player context (player perspective). In 1v1 heads-up, the"
         f" advantage is zero — reveal and stand are payoff-equivalent."
     )
@@ -267,12 +274,12 @@ def print_surrender_value(result: CfrResult) -> None:
     print("=" * 56)
     print("Hard-15 Surrender Value  (dealer perspective)")
     print("=" * 56)
-    print(f"  Hard-15 deal frequency (analytic, inf-deck):")
-    print(f"    12/169 = {_HARD15_FREQ*100:.2f}% of all 2-card dealer hands")
+    print("  Hard-15 deal frequency (analytic, inf-deck):")
+    print(f"    12/169 = {_HARD15_FREQ * 100:.2f}% of all 2-card dealer hands")
     print()
-    print(f"  GTO P(surrender | hard-15):  {p_surrender:.4f}  ({p_surrender*100:.2f}%)")
-    print(f"  Effective surrender rate:    {effective_rate:.4f}  ({effective_rate*100:.2f}%)")
-    print(f"    (= hard-15 freq × P(surrender) — % of all hands where dealer surrenders)")
+    print(f"  GTO P(surrender | hard-15):  {p_surrender:.4f}  ({p_surrender * 100:.2f}%)")
+    print(f"  Effective surrender rate:    {effective_rate:.4f}  ({effective_rate * 100:.2f}%)")
+    print("    (= hard-15 freq × P(surrender) — % of all hands where dealer surrenders)")
     print()
 
     # ── Section 2: EV impact (Nash vs no-surrender baselines) ────────────────
@@ -280,7 +287,7 @@ def print_surrender_value(result: CfrResult) -> None:
     print("Surrender EV Impact  (player perspective)")
     print("=" * 56)
     print(f"  {'Baseline':<22}  {'EV':>8}  {'vs Nash':>8}")
-    print(f"  {'-'*22}  {'--------':>8}  {'--------':>8}")
+    print(f"  {'-' * 22}  {'--------':>8}  {'--------':>8}")
     nash_ev = result.nash_ev
     baselines = [
         ("DP reveal=OFF (no surr)", _DP_EV_REVEAL_OFF),
@@ -291,11 +298,11 @@ def print_surrender_value(result: CfrResult) -> None:
     ]
     for label, ev in baselines:
         delta = nash_ev - ev if label != "CFR Nash (surr enabled)" else 0.0
-        delta_str = f"{delta*100:+.2f}%" if label != "CFR Nash (surr enabled)" else "—"
-        print(f"  {label:<22}  {ev*100:>+7.2f}%  {delta_str:>8}")
+        delta_str = f"{delta * 100:+.2f}%" if label != "CFR Nash (surr enabled)" else "—"
+        print(f"  {label:<22}  {ev * 100:>+7.2f}%  {delta_str:>8}")
     print()
-    print(f"  Note: Nash EV includes surrender as a strategic option for the dealer.")
-    print(f"  A negative delta means surrender shifts EV toward the dealer (hurts player).")
+    print("  Note: Nash EV includes surrender as a strategic option for the dealer.")
+    print("  A negative delta means surrender shifts EV toward the dealer (hurts player).")
     print()
 
     # ── Section 3: Research question Q4 answer ───────────────────────────────
@@ -303,10 +310,10 @@ def print_surrender_value(result: CfrResult) -> None:
     print("Research Question Answer")
     print("=" * 56)
     print(
-        f"  Q4 (Hard-15 surrender): Dealer hard-15 arises in {_HARD15_FREQ*100:.2f}%"
+        f"  Q4 (Hard-15 surrender): Dealer hard-15 arises in {_HARD15_FREQ * 100:.2f}%"
         f" of deals. At Nash equilibrium the dealer surrenders with probability"
         f" {p_surrender:.4f}, making the effective surrender rate"
-        f" {effective_rate*100:.2f}% of all hands. This converts certain losses"
+        f" {effective_rate * 100:.2f}% of all hands. This converts certain losses"
         f" (e.g. vs Ban Ban/Luck) into pushes — its full EV benefit relative to"
         f" the no-surrender DP baselines is embedded in the Nash EV reported above."
     )

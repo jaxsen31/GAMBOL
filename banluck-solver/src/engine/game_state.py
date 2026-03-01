@@ -17,30 +17,25 @@ Key Banluck-specific rules modelled here:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Callable
 
 import numpy as np
 
 from .cards import hand_to_str
-from .deck import deal_card, deal_specific_card, build_deck_from_hands
-from .hand import calculate_total, is_bust, is_soft
+from .deck import deal_card
+from .hand import calculate_total, is_soft
+from .rules import Outcome, settle_hand
 from .special_hands import (
-    HAND_BAN_BAN,
-    HAND_BAN_LUCK,
-    HAND_777,
-    HAND_FIVE_CARD_21,
-    HAND_FIVE_CARD_SUB21,
     classify_hand,
     is_ban_ban,
     is_ban_luck,
     is_hard_fifteen,
 )
-from .rules import Outcome, settle_hand
-
 
 # ─── Enumerations ─────────────────────────────────────────────────────────────
+
 
 class Phase(Enum):
     DEAL = auto()
@@ -59,10 +54,11 @@ class DealerAction(Enum):
     REVEAL_PLAYER = auto()  # Reveal and settle 3+-card player at 16/17
     HIT = auto()
     STAND = auto()
-    SURRENDER = auto()      # Hard-15 surrender only
+    SURRENDER = auto()  # Hard-15 surrender only
 
 
 # ─── State / Result types ──────────────────────────────────────────────────────
+
 
 @dataclass(frozen=True)
 class GameState:
@@ -70,22 +66,24 @@ class GameState:
 
     Frozen (hashable) so it can be used as a key in DP memoisation tables.
     """
+
     player_cards: tuple[int, ...]
     dealer_cards: tuple[int, ...]
     deck_remaining: tuple[int, ...]  # 52-length, 1=in deck, 0=dealt
     phase: Phase
     player_announced_five_card: bool  # Always True in solver (always-announce)
-    player_active: bool               # False if settled early (Ban Ban/Ban Luck/bust)
+    player_active: bool  # False if settled early (Ban Ban/Ban Luck/bust)
 
 
 @dataclass
 class HandResult:
     """Result of a completed Banluck hand, from the player's perspective."""
+
     player_cards: tuple[int, ...]
     dealer_cards: tuple[int, ...]
     outcome: Outcome
-    payout: float                # Signed units: +N win, -N loss, 0 push
-    player_hand_type: str        # Classified hand type string
+    payout: float  # Signed units: +N win, -N loss, 0 push
+    player_hand_type: str  # Classified hand type string
     dealer_hand_type: str
     dealer_surrendered: bool
     dealer_busted: bool
@@ -116,6 +114,7 @@ DealerHitStrategy = Callable[[tuple[int, ...], np.ndarray], bool]
 
 
 # ─── Built-in strategy helpers ────────────────────────────────────────────────
+
 
 def _default_player_strategy(
     player_cards: tuple[int, ...],
@@ -154,15 +153,16 @@ def _dealer_basic_hit_strategy(
     """
     total = calculate_total(dealer_cards)
     if total < 16:
-        return True   # Forced to hit (minimum 16 rule)
+        return True  # Forced to hit (minimum 16 rule)
     if total == 16:
-        return True   # Strategic choice to hit at 16
+        return True  # Strategic choice to hit at 16
     if total == 17 and is_soft(dealer_cards):
-        return True   # Soft 17: hit
-    return False      # 17+ (hard) or 18+: stand
+        return True  # Soft 17: hit
+    return False  # 17+ (hard) or 18+: stand
 
 
 # ─── Core game simulation ─────────────────────────────────────────────────────
+
 
 def play_hand(
     deck: np.ndarray,
@@ -241,7 +241,8 @@ def play_hand(
         dealer_type = classify_hand(dealer_cards)
         player_type = classify_hand(player_cards)
         outcome, payout = settle_hand(
-            player_cards, dealer_cards,
+            player_cards,
+            dealer_cards,
             dealer_surrendered=False,
             dealer_busted=False,
         )
@@ -277,9 +278,7 @@ def play_hand(
             break
 
         # Player strategic decision
-        action = player_strategy(
-            tuple(player_cards_list), dealer_upcard, deck
-        )
+        action = player_strategy(tuple(player_cards_list), dealer_upcard, deck)
 
         if action == PlayerAction.STAND:
             break
@@ -316,7 +315,8 @@ def play_hand(
     # ── Phase 7: Final settlement ─────────────────────────────────────────────
     dealer_type = classify_hand(dealer_cards)
     outcome, payout = settle_hand(
-        player_cards, dealer_cards,
+        player_cards,
+        dealer_cards,
         dealer_surrendered=False,
         dealer_busted=dealer_busted,
     )
@@ -393,6 +393,7 @@ def _dealer_action_phase(
 
 # ─── Selective reveal settlement helper ──────────────────────────────────────
 
+
 def settle_with_selective_reveal(
     player_cards: tuple[int, ...],
     dealer_cards_initial: tuple[int, ...],
@@ -454,7 +455,8 @@ def settle_with_selective_reveal(
     if dealer_at_selective_total and player_has_3plus_cards:
         # Selective reveal: settle 3+-card player at dealer's CURRENT (pre-hit) total
         outcome, payout = settle_hand(
-            player_cards, dealer_cards_initial,
+            player_cards,
+            dealer_cards_initial,
             dealer_surrendered=False,
             dealer_busted=False,
         )
@@ -481,7 +483,8 @@ def settle_with_selective_reveal(
             dealer_cards_initial, player_cards, deck, dealer_hit_strategy
         )
         outcome, payout = settle_hand(
-            player_cards, final_dealer,
+            player_cards,
+            final_dealer,
             dealer_surrendered=False,
             dealer_busted=dealer_busted,
         )

@@ -7,24 +7,21 @@ in hand.py using actual card tuples where possible.
 
 from __future__ import annotations
 
-import pytest
-
-from src.engine.cards import RANK_ACE, str_to_card
+from src.engine.cards import RANK_ACE
 from src.engine.hand import calculate_total, is_soft
 from src.solvers.baseline_dp import (
-    Action,
-    DealerOutcome,
+    _P_DEALER_BAN_BAN,
+    _P_DEALER_BAN_LUCK,
     NUM_RANKS,
     RANK_PROB,
     RANK_VALUES_SOLVER,
-    _P_DEALER_BAN_BAN,
-    _P_DEALER_BAN_LUCK,
+    Action,
+    DealerOutcome,
+    _ev_777,
     _ev_ban_ban,
     _ev_ban_luck,
-    _ev_777,
     _ev_hit,
     _ev_stand,
-    _ev_vs_dist,
     _is_soft_from_composition,
     _optimal_ev,
     _settle_ev,
@@ -44,8 +41,8 @@ from src.solvers.baseline_dp import (
 )
 from tests.conftest import hand
 
-
 # ─── Constants sanity ─────────────────────────────────────────────────────────
+
 
 class TestConstants:
     def test_rank_prob(self):
@@ -88,90 +85,91 @@ class TestConstants:
 
 # ─── _total_from_composition ──────────────────────────────────────────────────
 
+
 class TestTotalFromComposition:
     """Cross-validate _total_from_composition against calculate_total from hand.py."""
 
     # Hard hands (no aces)
     def test_hard_10_two_card(self):
         # e.g. 2+8 = 10
-        cards = hand('2C', '8D')
+        cards = hand("2C", "8D")
         assert _total_from_composition(10, 0, 2) == calculate_total(cards) == 10
 
     def test_hard_20_two_card(self):
         # e.g. 10+10 = 20
-        cards = hand('10C', 'KD')
+        cards = hand("10C", "KD")
         assert _total_from_composition(20, 0, 2) == calculate_total(cards) == 20
 
     def test_hard_16_two_card(self):
-        cards = hand('7C', '9D')
+        cards = hand("7C", "9D")
         assert _total_from_composition(16, 0, 2) == calculate_total(cards) == 16
 
     def test_hard_17_three_card(self):
         # e.g. 5+6+6 = 17
-        cards = hand('5C', '6D', '6H')
+        cards = hand("5C", "6D", "6H")
         assert _total_from_composition(17, 0, 3) == calculate_total(cards) == 17
 
     def test_hard_bust_three_card(self):
         # e.g. 10+8+7 = 25
-        cards = hand('10C', '8D', '7H')
+        cards = hand("10C", "8D", "7H")
         assert _total_from_composition(25, 0, 3) == calculate_total(cards) == 25
 
     def test_hard_21_three_card(self):
-        cards = hand('7C', '7D', '7H')
+        cards = hand("7C", "7D", "7H")
         assert _total_from_composition(21, 0, 3) == calculate_total(cards) == 21
 
     # Soft 2-card hands (ace = 11)
     def test_ban_luck_two_card(self):
         # A + 10-value = 21 (Ban Luck): ace counts as 11
-        cards = hand('AC', '10D')
+        cards = hand("AC", "10D")
         assert _total_from_composition(10, 1, 2) == calculate_total(cards) == 21
 
     def test_ban_ban_two_card(self):
         # A + A: first ace = 11, second = 10 → 21 (Ban Ban)
-        cards = hand('AC', 'AS')
+        cards = hand("AC", "AS")
         assert _total_from_composition(0, 2, 2) == calculate_total(cards) == 21
 
     def test_soft_18_two_card(self):
         # A + 7: ace = 11, total = 18
-        cards = hand('AC', '7D')
+        cards = hand("AC", "7D")
         assert _total_from_composition(7, 1, 2) == calculate_total(cards) == 18
 
     def test_soft_21_two_card_ace_king(self):
         # A + K = 21
-        cards = hand('AC', 'KD')
+        cards = hand("AC", "KD")
         assert _total_from_composition(10, 1, 2) == calculate_total(cards) == 21
 
     # Soft 3+-card hands (ace = 10 or 1)
     def test_soft_20_three_card(self):
         # 5 + 5 + A: ace = 10, total = 20
-        cards = hand('5C', '5D', 'AC')
+        cards = hand("5C", "5D", "AC")
         assert _total_from_composition(10, 1, 3) == calculate_total(cards) == 20
 
     def test_soft_15_three_card(self):
         # 2 + 3 + A: ace = 10, total = 15
-        cards = hand('2C', '3D', 'AC')
+        cards = hand("2C", "3D", "AC")
         assert _total_from_composition(5, 1, 3) == calculate_total(cards) == 15
 
     def test_hard_ace_three_card(self):
         # 6 + 6 + A: 6+6=12, ace: 12+10=22>21 → ace=1, total=13
-        cards = hand('6C', '6D', 'AC')
+        cards = hand("6C", "6D", "AC")
         assert _total_from_composition(12, 1, 3) == calculate_total(cards) == 13
 
     def test_triple_ace_three_card(self):
         # A+A+A, 3 cards: ace1: 0+10=10 → +10; ace2: 10+10=20 → +10; ace3: 20+10=30>21 → +1 = 21
-        cards = hand('AC', 'AD', 'AH')
+        cards = hand("AC", "AD", "AH")
         assert _total_from_composition(0, 3, 3) == calculate_total(cards) == 21
 
     # Five-card hands
     def test_five_card_hard_no_ace(self):
         # e.g. 2+2+2+2+3 = 11, 5 cards
-        cards = hand('2C', '2D', '2H', '2S', '3C')
+        cards = hand("2C", "2D", "2H", "2S", "3C")
         assert _total_from_composition(11, 0, 5) == calculate_total(cards) == 11
 
     def test_five_card_soft_ace(self):
         # non_ace=17, 1 ace, 5 cards: 17+10=27>21 → ace=1 → 18
         # e.g. 4+4+4+5 + A = 17 non-ace, 5 cards total
-        cards = hand('4C', '4D', '4H', '5C', 'AC')
+        cards = hand("4C", "4D", "4H", "5C", "AC")
         assert _total_from_composition(17, 1, 5) == calculate_total(cards) == 18
 
     def test_five_card_with_ace_fitting(self):
@@ -202,24 +200,25 @@ class TestTotalFromComposition:
 
 # ─── _is_soft_from_composition ────────────────────────────────────────────────
 
+
 class TestIsSoftFromComposition:
     """Cross-validate _is_soft_from_composition against is_soft from hand.py."""
 
     def test_soft_two_card_ace_ten(self):
         # A + 10: ace=11, 10+11=21 → soft
-        cards = hand('AC', '10D')
+        cards = hand("AC", "10D")
         assert _is_soft_from_composition(10, 1, 2) is True
         assert is_soft(cards) is True
 
     def test_soft_two_card_ace_seven(self):
         # A + 7: ace=11, 7+11=18 → soft
-        cards = hand('AC', '7D')
+        cards = hand("AC", "7D")
         assert _is_soft_from_composition(7, 1, 2) is True
         assert is_soft(cards) is True
 
     def test_hard_two_card_no_aces(self):
         # 10 + 8: no aces → not soft
-        cards = hand('10C', '8D')
+        cards = hand("10C", "8D")
         assert _is_soft_from_composition(18, 0, 2) is False
         assert is_soft(cards) is False
 
@@ -230,25 +229,25 @@ class TestIsSoftFromComposition:
 
     def test_soft_three_card_ace_fits(self):
         # 2 + 3 + A: 5+10=15 ≤21 → soft
-        cards = hand('2C', '3D', 'AC')
+        cards = hand("2C", "3D", "AC")
         assert _is_soft_from_composition(5, 1, 3) is True
         assert is_soft(cards) is True
 
     def test_hard_three_card_ace_forced_low(self):
         # 6 + 6 + A: 12+10=22>21 → hard (ace=1)
-        cards = hand('6C', '6D', 'AC')
+        cards = hand("6C", "6D", "AC")
         assert _is_soft_from_composition(12, 1, 3) is False
         assert is_soft(cards) is False
 
     def test_no_aces_three_card(self):
         # 5 + 6 + 7: no aces → not soft
-        cards = hand('5C', '6D', '7H')
+        cards = hand("5C", "6D", "7H")
         assert _is_soft_from_composition(18, 0, 3) is False
         assert is_soft(cards) is False
 
     def test_two_aces_two_card_ban_ban(self):
         # A + A (Ban Ban): first ace at 11, non_ace=0, 0+11=11 ≤21 → soft
-        cards = hand('AC', 'AS')
+        cards = hand("AC", "AS")
         assert _is_soft_from_composition(0, 2, 2) is True
         assert is_soft(cards) is True
 
@@ -266,6 +265,7 @@ class TestIsSoftFromComposition:
 
 
 # ─── _transition ──────────────────────────────────────────────────────────────
+
 
 class TestTransition:
     """Test _transition with concrete rank indices."""
@@ -325,6 +325,7 @@ class TestTransition:
 
 # ─── Dealer outcome distributions (A5) ───────────────────────────────────────
 
+
 class TestDealerDistributions:
     """Tests for compute_dealer_distribution — Task A5.
 
@@ -340,9 +341,9 @@ class TestDealerDistributions:
         for upcard in range(NUM_RANKS):
             do = compute_dealer_distribution(upcard)
             total = sum(do.final_dist.values()) + do.bust_prob
-            assert abs(total - 1.0) < 1e-9, (
-                f"upcard rank {upcard}: total probability = {total:.12f}"
-            )
+            assert (
+                abs(total - 1.0) < 1e-9
+            ), f"upcard rank {upcard}: total probability = {total:.12f}"
 
     def test_bust_probability_in_valid_range(self):
         """Dealer bust should be in [10%, 45%] for all upcards.
@@ -353,18 +354,16 @@ class TestDealerDistributions:
         """
         for upcard in range(NUM_RANKS):
             do = compute_dealer_distribution(upcard)
-            assert 0.10 <= do.bust_prob <= 0.45, (
-                f"upcard rank {upcard}: bust_prob = {do.bust_prob:.4f}"
-            )
+            assert (
+                0.10 <= do.bust_prob <= 0.45
+            ), f"upcard rank {upcard}: bust_prob = {do.bust_prob:.4f}"
 
     def test_init_probs_sum_in_unit_interval(self):
         """init_16_prob + init_17_prob must be in [0, 1] for all upcards."""
         for upcard in range(NUM_RANKS):
             do = compute_dealer_distribution(upcard)
             combined = do.init_16_prob + do.init_17_prob
-            assert 0.0 <= combined <= 1.0, (
-                f"upcard rank {upcard}: init_16+init_17 = {combined:.4f}"
-            )
+            assert 0.0 <= combined <= 1.0, f"upcard rank {upcard}: init_16+init_17 = {combined:.4f}"
 
     def test_bust_prob_non_negative(self):
         for upcard in range(NUM_RANKS):
@@ -375,9 +374,7 @@ class TestDealerDistributions:
         for upcard in range(NUM_RANKS):
             do = compute_dealer_distribution(upcard)
             for total, prob in do.final_dist.items():
-                assert prob >= 0.0, (
-                    f"upcard {upcard}: final_dist[{total}] = {prob}"
-                )
+                assert prob >= 0.0, f"upcard {upcard}: final_dist[{total}] = {prob}"
 
     def test_final_dist_keys_are_valid_totals(self):
         """All dealer final totals must be integers in [10, 21].
@@ -387,12 +384,10 @@ class TestDealerDistributions:
         for upcard in range(NUM_RANKS):
             do = compute_dealer_distribution(upcard)
             for total in do.final_dist:
-                assert isinstance(total, int), (
-                    f"upcard {upcard}: non-integer key {total!r}"
-                )
-                assert 10 <= total <= 21, (
-                    f"upcard {upcard}: total {total} out of valid range [10, 21]"
-                )
+                assert isinstance(total, int), f"upcard {upcard}: non-integer key {total!r}"
+                assert (
+                    10 <= total <= 21
+                ), f"upcard {upcard}: total {total} out of valid range [10, 21]"
 
     # ── Specific analytical values ──────────────────────────────────────────
 
@@ -439,14 +434,10 @@ class TestDealerDistributions:
             do = compute_dealer_distribution(upcard)
             if do.init_16_prob > 0:
                 s = sum(do.init_16_final_dist.values())
-                assert s <= 1.0 + 1e-9, (
-                    f"upcard {upcard}: init_16_final_dist sum = {s:.6f}"
-                )
+                assert s <= 1.0 + 1e-9, f"upcard {upcard}: init_16_final_dist sum = {s:.6f}"
             if do.init_17_prob > 0:
                 s = sum(do.init_17_final_dist.values())
-                assert s <= 1.0 + 1e-9, (
-                    f"upcard {upcard}: init_17_final_dist sum = {s:.6f}"
-                )
+                assert s <= 1.0 + 1e-9, f"upcard {upcard}: init_17_final_dist sum = {s:.6f}"
 
     def test_upcard_6_init_16_final_dist_values(self):
         """From hard-16 (nc=2), one hit gives totals 17-21 each with prob 1/13.
@@ -458,9 +449,9 @@ class TestDealerDistributions:
         d = do.init_16_final_dist
         assert set(d.keys()) == {17, 18, 19, 20, 21}
         for total in range(17, 22):
-            assert abs(d[total] - 1 / 13) < 1e-9, (
-                f"init_16_final_dist[{total}] = {d[total]:.12f}, expected 1/13"
-            )
+            assert (
+                abs(d[total] - 1 / 13) < 1e-9
+            ), f"init_16_final_dist[{total}] = {d[total]:.12f}, expected 1/13"
 
     def test_empty_conditional_dist_when_prob_zero(self):
         """When init_16_prob or init_17_prob is 0, the conditional dist is empty."""
@@ -480,19 +471,20 @@ class TestDealerDistributions:
         outcomes = [compute_dealer_distribution(r) for r in ten_ranks]
         ref = outcomes[0]
         for i, do in enumerate(outcomes[1:], start=1):
-            assert abs(do.bust_prob - ref.bust_prob) < 1e-12, (
-                f"rank {ten_ranks[i]}: bust_prob differs from rank 8"
-            )
-            assert set(do.final_dist.keys()) == set(ref.final_dist.keys()), (
-                f"rank {ten_ranks[i]}: final_dist keys differ from rank 8"
-            )
+            assert (
+                abs(do.bust_prob - ref.bust_prob) < 1e-12
+            ), f"rank {ten_ranks[i]}: bust_prob differs from rank 8"
+            assert set(do.final_dist.keys()) == set(
+                ref.final_dist.keys()
+            ), f"rank {ten_ranks[i]}: final_dist keys differ from rank 8"
             for total in ref.final_dist:
-                assert abs(do.final_dist[total] - ref.final_dist[total]) < 1e-12, (
-                    f"rank {ten_ranks[i]}: final_dist[{total}] differs from rank 8"
-                )
+                assert (
+                    abs(do.final_dist[total] - ref.final_dist[total]) < 1e-12
+                ), f"rank {ten_ranks[i]}: final_dist[{total}] differs from rank 8"
 
 
 # ─── _settle_ev (A6) ──────────────────────────────────────────────────────────
+
 
 class TestSettleEv:
     """Tests for _settle_ev — five-card bust rule (−2) and key settlement paths."""
@@ -519,6 +511,7 @@ class TestSettleEv:
 
 
 # ─── _ev_stand (A7) ───────────────────────────────────────────────────────────
+
 
 class TestEvStand:
     """Tests for _ev_stand — Task A7.
@@ -563,9 +556,7 @@ class TestEvStand:
         # Both hands have total=20, nc differs
         ev_2 = _ev_stand(20, 0, 2, do, False)
         ev_3 = _ev_stand(20, 0, 3, do, False)
-        assert abs(ev_2 - ev_3) < 1e-12, (
-            f"reveal_mode=OFF: ev_2={ev_2:.6f}, ev_3={ev_3:.6f}"
-        )
+        assert abs(ev_2 - ev_3) < 1e-12, f"reveal_mode=OFF: ev_2={ev_2:.6f}, ev_3={ev_3:.6f}"
 
     def test_reveal_off_nc2_nc3_same_ev_upcard_ace(self):
         """Same check with ace upcard — no init_16 path so reveal makes no difference."""
@@ -666,7 +657,7 @@ class TestEvStand:
             bust_prob=0.0,
             init_16_prob=0.5,
             init_17_prob=0.0,
-            init_16_final_dist={19: 1.0},   # after hitting from 16, always lands on 19
+            init_16_final_dist={19: 1.0},  # after hitting from 16, always lands on 19
             init_17_final_dist={},
         )
         ev_off = _ev_stand(18, 0, 3, do, False)
@@ -686,15 +677,16 @@ class TestEvStand:
                     # (use all non-ace cards so nc doesn't affect ace logic)
                     ev_off = _ev_stand(total, 0, nc, do, False)
                     ev_on = _ev_stand(total, 0, nc, do, True)
-                    assert -1.0 - 1e-9 <= ev_off <= 3.0 + 1e-9, (
-                        f"upcard={upcard} total={total} nc={nc} EV_off={ev_off}"
-                    )
-                    assert -1.0 - 1e-9 <= ev_on <= 3.0 + 1e-9, (
-                        f"upcard={upcard} total={total} nc={nc} EV_on={ev_on}"
-                    )
+                    assert (
+                        -1.0 - 1e-9 <= ev_off <= 3.0 + 1e-9
+                    ), f"upcard={upcard} total={total} nc={nc} EV_off={ev_off}"
+                    assert (
+                        -1.0 - 1e-9 <= ev_on <= 3.0 + 1e-9
+                    ), f"upcard={upcard} total={total} nc={nc} EV_on={ev_on}"
 
 
 # ─── A9: Strategy invariants ──────────────────────────────────────────────────
+
 
 class TestStrategyInvariants:
     """Tests for strategy invariants — Task A9.
@@ -715,18 +707,18 @@ class TestStrategyInvariants:
         do = compute_marginal_dealer_distribution()
         ev_stand = _ev_stand(20, 0, 2, do, False)
         ev_hit = _ev_hit(20, 0, 2, do, False, {})
-        assert ev_stand > ev_hit, (
-            f"EV_stand={ev_stand:.4f} should exceed EV_hit={ev_hit:.4f} at total=20, nc=2"
-        )
+        assert (
+            ev_stand > ev_hit
+        ), f"EV_stand={ev_stand:.4f} should exceed EV_hit={ev_hit:.4f} at total=20, nc=2"
 
     def test_stand_20_beats_hit_20_marginal_nc3(self):
         """Standing on hard 20 (nc=3) beats hitting under the marginal distribution."""
         do = compute_marginal_dealer_distribution()
         ev_stand = _ev_stand(20, 0, 3, do, False)
         ev_hit = _ev_hit(20, 0, 3, do, False, {})
-        assert ev_stand > ev_hit, (
-            f"EV_stand={ev_stand:.4f} should exceed EV_hit={ev_hit:.4f} at total=20, nc=3"
-        )
+        assert (
+            ev_stand > ev_hit
+        ), f"EV_stand={ev_stand:.4f} should exceed EV_hit={ev_hit:.4f} at total=20, nc=3"
 
     def test_stand_20_beats_hit_20_all_upcard_distributions(self):
         """Standing on hard 20 beats hitting for every upcard-specific distribution."""
@@ -754,21 +746,19 @@ class TestStrategyInvariants:
         do = compute_marginal_dealer_distribution()
         for nat in range(4, 12):  # totals 4–11 (nat equals total when na=0)
             action, ev = optimal_action(nat, 0, 2, do, reveal_mode=False)
-            assert action == Action.HIT, (
-                f"nat={nat}, nc=2: expected HIT, got {action} (EV={ev:.4f})"
-            )
-            assert ev > -1.0, (
-                f"nat={nat}, nc=2: EV_optimal={ev:.4f} should exceed forfeit (-1.0)"
-            )
+            assert (
+                action == Action.HIT
+            ), f"nat={nat}, nc=2: expected HIT, got {action} (EV={ev:.4f})"
+            assert ev > -1.0, f"nat={nat}, nc=2: EV_optimal={ev:.4f} should exceed forfeit (-1.0)"
 
     def test_hit_optimal_at_low_totals_nc3(self):
         """For nc=3 with hard total ≤11, hitting is optimal (min reachable nat=6 for 3 cards)."""
         do = compute_marginal_dealer_distribution()
         for nat in range(6, 12):  # minimum 3-card non-ace sum is 6 (2+2+2)
             action, ev = optimal_action(nat, 0, 3, do, reveal_mode=False)
-            assert action == Action.HIT, (
-                f"nat={nat}, nc=3: expected HIT, got {action} (EV={ev:.4f})"
-            )
+            assert (
+                action == Action.HIT
+            ), f"nat={nat}, nc=3: expected HIT, got {action} (EV={ev:.4f})"
 
     def test_ev_hit_strictly_beats_forfeit_at_total_11_nc2(self):
         """At total=11 (nc=2), EV_hit > -1.0: hitting is strictly better than forfeiting."""
@@ -784,9 +774,7 @@ class TestStrategyInvariants:
             do = compute_dealer_distribution(upcard)
             for nc in [2, 3, 4]:
                 ev = _ev_stand(15, 0, nc, do, False)
-                assert ev == -1.0, (
-                    f"upcard rank {upcard}, nc={nc}: EV_stand(total=15)={ev}"
-                )
+                assert ev == -1.0, f"upcard rank {upcard}, nc={nc}: EV_stand(total=15)={ev}"
 
     def test_ev_stand_forfeit_at_sub15_totals_marginal(self):
         """EV_stand == -1.0 for totals 2–14 with the marginal distribution."""
@@ -803,12 +791,8 @@ class TestStrategyInvariants:
             for nc in [2, 3]:
                 ev_off = _ev_stand(total, 0, nc, do, False)
                 ev_on = _ev_stand(total, 0, nc, do, True)
-                assert ev_off == -1.0, (
-                    f"total={total}, nc={nc}, reveal=OFF: EV_stand={ev_off}"
-                )
-                assert ev_on == -1.0, (
-                    f"total={total}, nc={nc}, reveal=ON: EV_stand={ev_on}"
-                )
+                assert ev_off == -1.0, f"total={total}, nc={nc}, reveal=OFF: EV_stand={ev_off}"
+                assert ev_on == -1.0, f"total={total}, nc={nc}, reveal=ON: EV_stand={ev_on}"
 
     # ── Total = 21 forces STAND ────────────────────────────────────────────
 
@@ -900,12 +884,13 @@ class TestStrategyInvariants:
         for total in range(16, 22):
             ev_nc2 = _ev_stand(total, 0, 2, do, False)
             ev_nc4 = _ev_stand(total, 0, 4, do, False)
-            assert abs(ev_nc2 - ev_nc4) < 1e-12, (
-                f"total={total}: EV_nc2={ev_nc2:.8f} != EV_nc4={ev_nc4:.8f} in reveal_mode=OFF"
-            )
+            assert (
+                abs(ev_nc2 - ev_nc4) < 1e-12
+            ), f"total={total}: EV_nc2={ev_nc2:.8f} != EV_nc4={ev_nc4:.8f} in reveal_mode=OFF"
 
 
 # ─── A10: Pre-settled hand EVs ────────────────────────────────────────────────
+
 
 class TestPreSettledHandEvs:
     """Tests for _ev_ban_ban, _ev_ban_luck, _ev_777 — Task A10.
@@ -1015,6 +1000,7 @@ class TestPreSettledHandEvs:
 
 # ─── A11: Public API ──────────────────────────────────────────────────────────
 
+
 class TestPublicAPI:
     """Tests for solve(), compute_house_edge(), and wrapper helpers — Task A11.
 
@@ -1047,10 +1033,10 @@ class TestPublicAPI:
     def test_solve_key_structure_total_nc_is_soft(self):
         """Keys are (total, nc, is_soft) with total in [2,21], nc in [2,5], is_soft in {0,1}."""
         table = solve(reveal_mode=False)
-        for total, nc, is_soft in table:
+        for total, nc, soft in table:
             assert 2 <= total <= 21
             assert 2 <= nc <= 5
-            assert is_soft in (0, 1)
+            assert soft in (0, 1)
 
     def test_solve_covers_hard_starting_totals(self):
         """Hard 2-card totals 4–20 (reachable without aces) are all in the table."""
@@ -1067,9 +1053,9 @@ class TestPublicAPI:
     def test_solve_covers_multicard_states(self):
         """3-, 4-, 5-card states at representative totals are in the table."""
         table = solve(reveal_mode=False)
-        assert (20, 3, 0) in table    # hard 20, 3 cards
-        assert (17, 4, 0) in table    # hard 17, 4 cards
-        assert (16, 5, 0) in table    # hard 16, 5 cards
+        assert (20, 3, 0) in table  # hard 20, 3 cards
+        assert (17, 4, 0) in table  # hard 17, 4 cards
+        assert (16, 5, 0) in table  # hard 16, 5 cards
 
     # ── solve() action invariants ─────────────────────────────────────────
 
@@ -1077,23 +1063,23 @@ class TestPublicAPI:
         """Total = 21 always yields STAND (cannot improve)."""
         table = solve(reveal_mode=False)
         for nc in range(2, 6):
-            for is_soft in (0, 1):
-                if (21, nc, is_soft) in table:
-                    action, _ = table[(21, nc, is_soft)]
-                    assert action == Action.STAND, (
-                        f"(21, {nc}, {is_soft}): expected STAND, got {action}"
-                    )
+            for soft in (0, 1):
+                if (21, nc, soft) in table:
+                    action, _ = table[(21, nc, soft)]
+                    assert (
+                        action == Action.STAND
+                    ), f"(21, {nc}, {soft}): expected STAND, got {action}"
 
     def test_solve_stand_at_nc5_all_totals(self):
         """nc = 5 always yields STAND (five-card rule: cannot draw further)."""
         table = solve(reveal_mode=False)
         for total in range(10, 22):
-            for is_soft in (0, 1):
-                if (total, 5, is_soft) in table:
-                    action, _ = table[(total, 5, is_soft)]
-                    assert action == Action.STAND, (
-                        f"(total={total}, nc=5, is_soft={is_soft}): expected STAND, got {action}"
-                    )
+            for soft in (0, 1):
+                if (total, 5, soft) in table:
+                    action, _ = table[(total, 5, soft)]
+                    assert (
+                        action == Action.STAND
+                    ), f"(total={total}, nc=5, is_soft={soft}): expected STAND, got {action}"
 
     def test_solve_hit_at_total_11_nc2(self):
         """Hard total=11, nc=2: hitting cannot bust, always better than forfeiting."""
@@ -1113,10 +1099,10 @@ class TestPublicAPI:
     def test_solve_ev_in_valid_range(self):
         """All EVs must be in [-1.0, 7.0] (max special payout is 7:1)."""
         table = solve(reveal_mode=False)
-        for (total, nc, is_soft), (action, ev) in table.items():
-            assert -1.0 - 1e-9 <= ev <= 7.0 + 1e-9, (
-                f"({total},{nc},{is_soft}): EV={ev:.4f} out of range"
-            )
+        for (total, nc, soft), (action, ev) in table.items():
+            assert (
+                -1.0 - 1e-9 <= ev <= 7.0 + 1e-9
+            ), f"({total},{nc},{soft}): EV={ev:.4f} out of range"
 
     def test_solve_forfeit_states_have_ev_neg1(self):
         """States with total ≤ 15 have EV_stand = −1.0; optimal EV ≥ −1.0 (hit is better)."""
@@ -1125,22 +1111,20 @@ class TestPublicAPI:
             for nc in (2, 3):
                 if (total, nc, 0) in table:
                     _, ev = table[(total, nc, 0)]
-                    assert ev >= -1.0 - 1e-9, (
-                        f"EV at ({total},{nc},0) = {ev:.4f} < -1.0 (worse than stand-forfeit)"
-                    )
+                    assert (
+                        ev >= -1.0 - 1e-9
+                    ), f"EV at ({total},{nc},0) = {ev:.4f} < -1.0 (worse than stand-forfeit)"
 
     def test_solve_reveal_modes_produce_different_ev_for_nc3(self):
         """For nc=3 states, some EVs differ between reveal_mode=ON and OFF."""
         table_on = solve(reveal_mode=True)
         table_off = solve(reveal_mode=False)
         diffs = [
-            abs(table_on[k][1] - table_off[k][1])
-            for k in table_on
-            if k[1] == 3 and k in table_off
+            abs(table_on[k][1] - table_off[k][1]) for k in table_on if k[1] == 3 and k in table_off
         ]
-        assert any(d > 1e-6 for d in diffs), (
-            "reveal_mode=ON and OFF produce identical EVs for all nc=3 states — unexpected"
-        )
+        assert any(
+            d > 1e-6 for d in diffs
+        ), "reveal_mode=ON and OFF produce identical EVs for all nc=3 states — unexpected"
 
     def test_solve_reveal_modes_nc2_stand_states_same_ev(self):
         """For nc=2 STAND states, EV is identical between reveal_mode=ON and OFF.
@@ -1157,9 +1141,9 @@ class TestPublicAPI:
                 action_on, ev_on = table_on[key]
                 action_off, ev_off = table_off[key]
                 if action_off == Action.STAND and action_on == Action.STAND:
-                    assert abs(ev_on - ev_off) < 1e-10, (
-                        f"nc=2 STAND state {key}: EV_on={ev_on:.8f} != EV_off={ev_off:.8f}"
-                    )
+                    assert (
+                        abs(ev_on - ev_off) < 1e-10
+                    ), f"nc=2 STAND state {key}: EV_on={ev_on:.8f} != EV_off={ev_off:.8f}"
 
     # ── compute_house_edge() ──────────────────────────────────────────────
 
@@ -1186,9 +1170,9 @@ class TestPublicAPI:
         """House edge differs between reveal_mode=ON and OFF."""
         he_off = compute_house_edge(solve(reveal_mode=False))
         he_on = compute_house_edge(solve(reveal_mode=True))
-        assert abs(he_off - he_on) > 1e-6, (
-            f"House edge unchanged between reveal modes: OFF={he_off:.6f} ON={he_on:.6f}"
-        )
+        assert (
+            abs(he_off - he_on) > 1e-6
+        ), f"House edge unchanged between reveal modes: OFF={he_off:.6f} ON={he_on:.6f}"
 
     # ── wrapper helpers ───────────────────────────────────────────────────
 
@@ -1242,12 +1226,11 @@ class TestPublicAPI:
             total, nc, is_soft = k
             if nc == 2 and k in table_off:
                 if table_off[k][0] == Action.STAND:
-                    assert abs(v) < 1e-10, (
-                        f"nc=2 STAND state {k}: unexpected EV delta {v:.2e}"
-                    )
+                    assert abs(v) < 1e-10, f"nc=2 STAND state {k}: unexpected EV delta {v:.2e}"
 
 
 # ─── A12: print_strategy_chart + end-to-end ───────────────────────────────────
+
 
 class TestPrintAndMain:
     """Tests for print_strategy_chart() and end-to-end solver correctness — A12.
@@ -1309,15 +1292,15 @@ class TestPrintAndMain:
         table = solve(reveal_mode=False)
         chart = {k: v[0] for k, v in table.items()}
         print_strategy_chart(chart, "test")
-        out = capsys.readouterr().out
+        capsys.readouterr()
         # Verify the table data directly: all nc=5 entries should be STAND
         for total in range(16, 22):
-            for is_soft in (0, 1):
-                key = (total, 5, is_soft)
+            for soft in (0, 1):
+                key = (total, 5, soft)
                 if key in chart:
-                    assert chart[key] == Action.STAND, (
-                        f"nc=5 key {key} has action {chart[key]}, expected STAND"
-                    )
+                    assert (
+                        chart[key] == Action.STAND
+                    ), f"nc=5 key {key} has action {chart[key]}, expected STAND"
 
     # ── End-to-end EV / house edge ────────────────────────────────────────
 
@@ -1329,16 +1312,16 @@ class TestPrintAndMain:
         dealer surrender.  (Five-card bust penalty was clarified after A12.)
         """
         he = compute_house_edge(solve(reveal_mode=False))
-        assert 0.005 <= he <= 0.08, (
-            f"Player EV={he:.4f}; expected ~+0.016 (no dealer surrender, 5-card bust -2)"
-        )
+        assert (
+            0.005 <= he <= 0.08
+        ), f"Player EV={he:.4f}; expected ~+0.016 (no dealer surrender, 5-card bust -2)"
 
     def test_end_to_end_player_edge_reveal_on(self):
         """Phase 1.1 no-surrender: player EV ≈ +2.4% in reveal_mode=ON."""
         he = compute_house_edge(solve(reveal_mode=True))
-        assert 0.005 <= he <= 0.08, (
-            f"Player EV={he:.4f}; expected ~+0.024 (no dealer surrender, 5-card bust -2)"
-        )
+        assert (
+            0.005 <= he <= 0.08
+        ), f"Player EV={he:.4f}; expected ~+0.024 (no dealer surrender, 5-card bust -2)"
 
     def test_end_to_end_both_modes_positive_player_ev(self):
         """Without dealer surrender both reveal modes give the player a positive EV."""
@@ -1347,6 +1330,7 @@ class TestPrintAndMain:
 
 
 # ─── A13: EV margin table ─────────────────────────────────────────────────────
+
 
 class TestEvMarginTable:
     """Tests for build_ev_margin_table() and print_strategy_chart show_ev_margin — Task A13."""
@@ -1361,11 +1345,11 @@ class TestEvMarginTable:
     def test_forced_stand_states_have_none_margin(self):
         """nc=5, total=21, and total≤15 states yield None (no hit decision)."""
         margins = build_ev_margin_table(reveal_mode=False)
-        for (total, nc, is_soft), margin in margins.items():
+        for (total, nc, soft), margin in margins.items():
             if nc >= 5 or total == 21 or total <= 15:
-                assert margin is None, (
-                    f"Expected None margin for forced-stand ({total},{nc},{is_soft}), got {margin}"
-                )
+                assert (
+                    margin is None
+                ), f"Expected None margin for forced-stand ({total},{nc},{soft}), got {margin}"
 
     def test_hard_20_nc2_margin_greater_than_hard_16_nc2(self):
         """Standing on 20 is much more clearly correct than standing on 16.
@@ -1378,9 +1362,9 @@ class TestEvMarginTable:
         margin_20 = margins.get((20, 2, 0))
         margin_16 = margins.get((16, 2, 0))
         assert margin_20 is not None and margin_16 is not None
-        assert margin_20 > margin_16, (
-            f"Expected hard-20 margin ({margin_20:.4f}) > hard-16 margin ({margin_16:.4f})"
-        )
+        assert (
+            margin_20 > margin_16
+        ), f"Expected hard-20 margin ({margin_20:.4f}) > hard-16 margin ({margin_16:.4f})"
 
     def test_nc4_state_has_large_margin(self):
         """At least one nc=4 state has margin > 0.5.
@@ -1390,9 +1374,9 @@ class TestEvMarginTable:
         """
         margins = build_ev_margin_table(reveal_mode=False)
         nc4_margins = [m for (t, nc, s), m in margins.items() if nc == 4 and m is not None]
-        assert any(m > 0.5 for m in nc4_margins), (
-            f"No nc=4 state has margin > 0.5; max is {max(nc4_margins):.4f}"
-        )
+        assert any(
+            m > 0.5 for m in nc4_margins
+        ), f"No nc=4 state has margin > 0.5; max is {max(nc4_margins):.4f}"
 
     def test_print_shows_margin_grid_when_enabled(self, capsys):
         """print_strategy_chart with show_ev_margin=True prints the EV margin grid."""

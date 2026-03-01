@@ -28,8 +28,8 @@ from src.engine.game_state import DealerAction, PlayerAction
 from src.engine.hand import calculate_total, is_soft
 from src.engine.special_hands import is_hard_fifteen
 
-
 # ─── Information set types ────────────────────────────────────────────────────
+
 
 class PlayerHitStandInfoSet(NamedTuple):
     """Player's information when deciding to hit or stand.
@@ -52,6 +52,7 @@ class PlayerHitStandInfoSet(NamedTuple):
         >>> PlayerHitStandInfoSet(total=17, num_cards=2, is_soft=True)
         PlayerHitStandInfoSet(total=17, num_cards=2, is_soft=True)
     """
+
     total: int
     num_cards: int
     is_soft: bool
@@ -73,6 +74,7 @@ class DealerSurrenderInfoSet(NamedTuple):
         >>> DealerSurrenderInfoSet(total=15, is_hard_fifteen=True)
         DealerSurrenderInfoSet(total=15, is_hard_fifteen=True)
     """
+
     total: int
     is_hard_fifteen: bool
 
@@ -96,6 +98,7 @@ class DealerActionInfoSet(NamedTuple):
         >>> DealerActionInfoSet(dealer_total=16, dealer_nc=2, is_soft=False, player_nc=3)
         DealerActionInfoSet(dealer_total=16, dealer_nc=2, is_soft=False, player_nc=3)
     """
+
     dealer_total: int
     dealer_nc: int
     is_soft: bool
@@ -103,6 +106,7 @@ class DealerActionInfoSet(NamedTuple):
 
 
 # ─── Factory / extractor functions ───────────────────────────────────────────
+
 
 def make_player_info_set(player_cards: tuple[int, ...]) -> PlayerHitStandInfoSet:
     """Extract PlayerHitStandInfoSet from a raw card integer tuple.
@@ -126,9 +130,7 @@ def make_player_info_set(player_cards: tuple[int, ...]) -> PlayerHitStandInfoSet
     )
 
 
-def make_dealer_surrender_info_set(
-    dealer_cards: tuple[int, ...]
-) -> DealerSurrenderInfoSet:
+def make_dealer_surrender_info_set(dealer_cards: tuple[int, ...]) -> DealerSurrenderInfoSet:
     """Extract DealerSurrenderInfoSet from the dealer's initial 2-card hand.
 
     Args:
@@ -177,6 +179,7 @@ def make_dealer_action_info_set(
 
 
 # ─── Legal action queries ─────────────────────────────────────────────────────
+
 
 def get_legal_player_actions(
     info_set: PlayerHitStandInfoSet,

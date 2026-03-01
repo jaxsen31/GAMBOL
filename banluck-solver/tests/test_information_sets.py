@@ -10,8 +10,6 @@ Covers:
 
 from __future__ import annotations
 
-import pytest
-
 from src.engine.cards import str_to_card
 from src.engine.game_state import DealerAction, PlayerAction
 from src.solvers.information_sets import (
@@ -33,8 +31,8 @@ def hand(*card_strs: str) -> tuple[int, ...]:
 
 # ─── TestPlayerHitStandInfoSet ────────────────────────────────────────────────
 
-class TestPlayerHitStandInfoSet:
 
+class TestPlayerHitStandInfoSet:
     def test_2card_hard_hand(self):
         """9+8 = hard 17, nc=2, not soft."""
         info = PlayerHitStandInfoSet(total=17, num_cards=2, is_soft=False)
@@ -112,8 +110,8 @@ class TestPlayerHitStandInfoSet:
 
 # ─── TestDealerSurrenderInfoSet ───────────────────────────────────────────────
 
-class TestDealerSurrenderInfoSet:
 
+class TestDealerSurrenderInfoSet:
     def test_hard_15_seven_eight(self):
         """7+8 = hard 15, is_hard_fifteen=True."""
         info = DealerSurrenderInfoSet(total=15, is_hard_fifteen=True)
@@ -161,8 +159,8 @@ class TestDealerSurrenderInfoSet:
 
 # ─── TestDealerActionInfoSet ──────────────────────────────────────────────────
 
-class TestDealerActionInfoSet:
 
+class TestDealerActionInfoSet:
     def test_16_player_nc3_has_reveal(self):
         """At dealer 16 with 3+-card player, REVEAL_PLAYER is legal."""
         info = DealerActionInfoSet(dealer_total=16, dealer_nc=2, is_soft=False, player_nc=3)
@@ -227,11 +225,11 @@ class TestDealerActionInfoSet:
 
 # ─── TestMakeHelpers ──────────────────────────────────────────────────────────
 
-class TestMakeHelpers:
 
+class TestMakeHelpers:
     def test_make_player_info_set_ban_luck(self):
         """A+K = Ban Luck, total=21, nc=2, soft."""
-        cards = hand('AS', 'KC')
+        cards = hand("AS", "KC")
         info = make_player_info_set(cards)
         assert info.total == 21
         assert info.num_cards == 2
@@ -239,7 +237,7 @@ class TestMakeHelpers:
 
     def test_make_player_info_set_3card(self):
         """3-card hand: nc=3."""
-        cards = hand('5C', '6D', '7H')  # 5+6+7 = 18
+        cards = hand("5C", "6D", "7H")  # 5+6+7 = 18
         info = make_player_info_set(cards)
         assert info.num_cards == 3
         assert info.total == 18
@@ -247,21 +245,21 @@ class TestMakeHelpers:
 
     def test_make_dealer_surrender_info_set_hard_15(self):
         """7+8 = hard 15: is_hard_fifteen=True."""
-        cards = hand('7C', '8D')
+        cards = hand("7C", "8D")
         info = make_dealer_surrender_info_set(cards)
         assert info.total == 15
         assert info.is_hard_fifteen is True
 
     def test_make_dealer_surrender_info_set_soft_15(self):
         """A+4 = soft 15: is_hard_fifteen=False."""
-        cards = hand('AS', '4C')
+        cards = hand("AS", "4C")
         info = make_dealer_surrender_info_set(cards)
         assert info.total == 15
         assert info.is_hard_fifteen is False
 
     def test_make_dealer_action_info_set_16(self):
         """9+7 dealer at 16, player nc=3."""
-        cards = hand('9C', '7D')
+        cards = hand("9C", "7D")
         info = make_dealer_action_info_set(cards, player_nc=3)
         assert info.dealer_total == 16
         assert info.dealer_nc == 2
@@ -270,7 +268,7 @@ class TestMakeHelpers:
 
     def test_make_dealer_action_info_set_soft_17(self):
         """A+6 = soft 17, player nc=2."""
-        cards = hand('AS', '6C')
+        cards = hand("AS", "6C")
         info = make_dealer_action_info_set(cards, player_nc=2)
         assert info.dealer_total == 17
         assert info.is_soft is True
@@ -278,7 +276,7 @@ class TestMakeHelpers:
 
     def test_round_trip_player_legal_actions(self):
         """make_player_info_set → get_legal_player_actions round-trip."""
-        cards = hand('9C', '8D')  # 17
+        cards = hand("9C", "8D")  # 17
         info = make_player_info_set(cards)
         actions = get_legal_player_actions(info)
         assert PlayerAction.HIT in actions
@@ -286,9 +284,9 @@ class TestMakeHelpers:
 
     def test_return_types(self):
         """All make_* functions return the correct NamedTuple type."""
-        p_info = make_player_info_set(hand('9C', '8D'))
-        s_info = make_dealer_surrender_info_set(hand('7C', '8D'))
-        a_info = make_dealer_action_info_set(hand('9C', '7D'), player_nc=3)
+        p_info = make_player_info_set(hand("9C", "8D"))
+        s_info = make_dealer_surrender_info_set(hand("7C", "8D"))
+        a_info = make_dealer_action_info_set(hand("9C", "7D"), player_nc=3)
 
         assert type(p_info) is PlayerHitStandInfoSet
         assert type(s_info) is DealerSurrenderInfoSet
