@@ -4,20 +4,44 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Context
 
-Always prioritize the constraints defined in `banluck_PRD_v1.3.md` (the active PRD). Any implementation decision that conflicts with the PRD must be flagged and resolved before proceeding.
+Always prioritize the constraints defined in `banluck-solver/banluck_PRD_v1.3.md` (the active Banluck PRD). Any implementation decision that conflicts with the PRD must be flagged and resolved before proceeding.
 
 ## Session Start
 
-At the start of every session: read the last entry in `NEXT_ACTIONS.md`, summarize it, and ask the user for their priority for the day before doing anything else.
+At the start of every session:
+- **Banluck sessions**: read `banluck-solver/NEXT_ACTIONS.md`, summarize the last entry, and ask the user for their priority.
+- **Thai Baccarat sessions**: read `NEXT_ACTIONS_BACCARAT.md`, summarize the current phase status, and ask the user for their priority.
+- Then wait for the user's direction before doing anything else.
+
+## Installed Subagents
+
+Four subagents are installed at `.claude/agents/` and are available in all sessions:
+
+| Agent | Model | Primary use |
+|---|---|---|
+| `python-pro` | Sonnet | NumPy, Numba JIT, pytest, type-safe Python |
+| `performance-engineer` | Sonnet | Profiling, benchmarking, bottleneck elimination |
+| `code-reviewer` | Opus | Post-phase code quality + security audit |
+| `debugger` | Sonnet | Root-cause analysis, solver correctness bugs |
+
+Claude Code invokes these automatically when tasks match their descriptions. You can
+also request them explicitly: *"use the performance-engineer agent to profile the CFR solver"*.
+
+**Key trigger points:**
+- After any solver first-pass implementation → `performance-engineer` (before writing tests)
+- After each phase completes → `code-reviewer`
+- When tests reveal unexpected EV or settlement values → `debugger`
 
 ## PRD Version Control
 
-The active PRD is always at the repo root. Superseded versions live in `archive/`:
+The active Banluck PRD lives in `banluck-solver/`. Superseded versions live in `archive/`:
 - `archive/banluck_PRD_v1.1.md` — archived
 - `archive/banluck_PRD_v1.2.md` — archived
-- `banluck_PRD_v1.3.md` — **active**
+- `banluck-solver/banluck_PRD_v1.3.md` — **active**
 
-When a new PRD version is provided, move the current active version to `archive/` before placing the new one at the root.
+When a new Banluck PRD version is provided, move the current active version to `archive/` before placing the new one in `banluck-solver/`.
+
+The active Baccarat PRD lives at the repo root as `baccarat_PRD.md` (created during GSD setup).
 
 ## Commands
 
@@ -89,7 +113,7 @@ These differ from standard Blackjack and are fully implemented in the engine:
 
 ## Next Phase: 1.1 Baseline DP Solver
 
-See `NEXT_ACTIONS.md` for the full task list. Key design decisions already made:
+See `banluck-solver/NEXT_ACTIONS.md` for the full task list. Key design decisions already made:
 - State: `(player_cards: tuple, dealer_upcard: int, deck: tuple)`
 - Dealer strategy: fixed (hit ≤16, hit soft 17, stand hard 17+)
 - Two runs: `reveal_mode=ON` (dealer always reveals 3+-card players at 16/17) and `reveal_mode=OFF` (all players settle against final total)
