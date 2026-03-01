@@ -11,6 +11,7 @@ enumerating individual cards in the hot path.
 
 from __future__ import annotations
 
+import functools
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -68,6 +69,7 @@ class DealerOutcome:
 
 # ─── A2: Composition helpers ──────────────────────────────────────────────────
 
+@functools.lru_cache(maxsize=None)
 def _total_from_composition(non_ace_total: int, num_aces: int, num_cards: int) -> int:
     """Compute best hand total from the abstract composition representation.
 
@@ -105,6 +107,7 @@ def _total_from_composition(non_ace_total: int, num_aces: int, num_cards: int) -
     return total
 
 
+@functools.lru_cache(maxsize=None)
 def _is_soft_from_composition(non_ace_total: int, num_aces: int, num_cards: int) -> bool:
     """Return True if at least one ace is counted at its high value (soft hand).
 
