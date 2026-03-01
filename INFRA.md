@@ -13,7 +13,7 @@
 | Tools installed locally | ✅ Done (2026-03-01) |
 | Lint violations fixed | ✅ Done (2026-03-01) |
 | Security scans verified | ✅ Done (2026-03-01) |
-| CI green on GitHub | ⬜ Pending |
+| CI green on GitHub | ✅ Done (2026-03-01) |
 | Pre-commit active locally | ✅ Done (2026-03-01) |
 | /simplify workflow adopted | ⬜ Pending |
 
@@ -60,9 +60,9 @@
 ## E — Verify CI green on GitHub
 > After B and C pass locally, push and watch the Actions tab.
 
-- [ ] **E1** — `git push origin main` — triggers the CI workflow on GitHub
-- [ ] **E2** — Open `https://github.com/jaxsen31/GAMBOL/actions` and confirm both Python 3.11 and 3.12 jobs are green
-- [ ] **E3** — If any job fails, read the log, fix locally, push again
+- [x] **E1** — `git push origin main` — triggers the CI workflow on GitHub
+- [x] **E2** — CI #3 green ✅ (Python 3.11 + 3.12, 6m 22s)
+- [x] **E3** — Fixed ruff version mismatch (v0.4.9 → v0.15.4) before green
 
 ---
 
